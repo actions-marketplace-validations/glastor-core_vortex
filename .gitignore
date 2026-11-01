@@ -1,0 +1,23 @@
+# Deno & Build Artifacts
+dist/
+coverage/
+*.exe
+*.out
+
+# Vortex Runtime Reports & Local Cache
+vortex-report.json
+vortex-summary.md
+.vortex/cache/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

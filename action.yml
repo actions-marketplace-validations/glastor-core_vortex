@@ -1,0 +1,131 @@
+name: "Vortex — AST Predictive CI & Test Splitter"
+description: "AST-driven predictive CI orchestrator, blast-radius DAG analyzer, LPT dynamic test splitter & FinOps engine."
+author: "GLASTOR® Core (@glastor-dev)"
+
+branding:
+  icon: "zap"
+  color: "purple"
+
+inputs:
+  config-path:
+    description: "Path to the .vortex.yml configuration file."
+    required: false
+    default: ".vortex.yml"
+  workspace:
+    description: "Target repository workspace root directory."
+    required: false
+    default: "."
+  base-ref:
+    description: "Base Git reference or SHA to diff against (e.g., origin/main, HEAD~1)."
+    required: false
+    default: "HEAD~1"
+  head-ref:
+    description: "Head Git reference or SHA to analyze (default: HEAD)."
+    required: false
+    default: "HEAD"
+  shards:
+    description: "Maximum number of parallel shards to generate via LPT Bin-Packing (1-64)."
+    required: false
+    default: "4"
+  test-globs:
+    description: "Comma-separated glob patterns matching test suites."
+    required: false
+    default: ""
+  fail-safe-globs:
+    description: "Comma-separated glob patterns that trigger full test suite execution when modified."
+    required: false
+    default: ""
+  telemetry-path:
+    description: "Path to historical test duration and flakiness JSON store."
+    required: false
+    default: ".vortex/telemetry.json"
+  flaky-quarantine:
+    description: "Automatically isolate flaky tests exceeding flaky-threshold from blocking the pipeline."
+    required: false
+    default: "true"
+  flaky-threshold:
+    description: "Flakiness score threshold (0.05 - 1.0) above which a test is quarantined."
+    required: false
+    default: "0.35"
+  ignore-type-only:
+    description: "Skip runtime test execution when only compile-time TypeScript interfaces/types are modified."
+    required: false
+    default: "false"
+  runner-cost-per-min:
+    description: "Cloud runner cost per minute in USD for FinOps savings telemetry."
+    required: false
+    default: "0.016"
+  report-file:
+    description: "Output path for the full Vortex JSON report."
+    required: false
+    default: "vortex-report.json"
+  write-summary:
+    description: "Publish the FinOps & Mermaid Blast-Radius report to GITHUB_STEP_SUMMARY."
+    required: false
+    default: "true"
+
+outputs:
+  should-run:
+    description: "Boolean string ('true' or 'false') indicating whether downstream test jobs should execute."
+    value: ${{ steps.vortex-run.outputs.should-run }}
+  execution-mode:
+    description: "Selected execution strategy ('skip', 'surgical', or 'full-fail-safe')."
+    value: ${{ steps.vortex-run.outputs.execution-mode }}
+  affected-tests:
+    description: "Space-separated list of impacted test file paths."
+    value: ${{ steps.vortex-run.outputs.affected-tests }}
+  affected-count:
+    description: "Number of test suites selected for execution."
+    value: ${{ steps.vortex-run.outputs.affected-count }}
+  skipped-count:
+    description: "Number of unaffected test suites safely skipped."
+    value: ${{ steps.vortex-run.outputs.skipped-count }}
+  quarantined-tests:
+    description: "Space-separated list of flaky test files isolated in quarantine."
+    value: ${{ steps.vortex-run.outputs.quarantined-tests }}
+  time-saved-seconds:
+    description: "Estimated pipeline wall-clock seconds saved by AST pruning and LPT sharding."
+    value: ${{ steps.vortex-run.outputs.time-saved-seconds }}
+  savings-percent:
+    description: "Percentage of CI wall-clock time saved (0 - 100)."
+    value: ${{ steps.vortex-run.outputs.savings-percent }}
+  blast-radius-score:
+    description: "Calculated AST blast-radius severity score (0 - 100)."
+    value: ${{ steps.vortex-run.outputs.blast-radius-score }}
+  matrix:
+    description: "JSON payload for GitHub Actions strategy.matrix ({ include: [{ shard_id, test_files, files, estimated_ms }] })."
+    value: ${{ steps.vortex-run.outputs.matrix }}
+  report-path:
+    description: "Resolved path to the generated vortex-report.json file."
+    value: ${{ steps.vortex-run.outputs.report-path }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Deno 2 Runtime
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    - name: Execute Vortex AST Impact & LPT Sharding Engine
+      id: vortex-run
+      shell: bash
+      env:
+        INPUT_CONFIG_PATH: ${{ inputs.config-path }}
+        INPUT_WORKSPACE: ${{ inputs.workspace }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_HEAD_REF: ${{ inputs.head-ref }}
+        INPUT_SHARDS: ${{ inputs.shards }}
+        INPUT_TEST_GLOBS: ${{ inputs.test-globs }}
+        INPUT_FAIL_SAFE_GLOBS: ${{ inputs.fail-safe-globs }}
+        INPUT_TELEMETRY_PATH: ${{ inputs.telemetry-path }}
+        INPUT_FLAKY_QUARANTINE: ${{ inputs.flaky-quarantine }}
+        INPUT_FLAKY_THRESHOLD: ${{ inputs.flaky-threshold }}
+        INPUT_IGNORE_TYPE_ONLY: ${{ inputs.ignore-type-only }}
+        INPUT_RUNNER_COST_PER_MIN: ${{ inputs.runner-cost-per-min }}
+        INPUT_REPORT_FILE: ${{ inputs.report-file }}
+        INPUT_WRITE_SUMMARY: ${{ inputs.write-summary }}
+      run: |
+        deno run --allow-read --allow-write --allow-env --allow-run=git \
+          --config "${{ github.action_path }}/deno.json" \
+          "${{ github.action_path }}/src/main.ts"

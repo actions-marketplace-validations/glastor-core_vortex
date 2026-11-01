@@ -1,0 +1,66 @@
+name: "Vortex CI — AST Impact, Lint, Type Check & Surgical Tests"
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. Dogfooding Vortex: Analyze AST Blast Radius & Generate LPT Matrix
+  vortex-brain:
+    name: "⚡ Vortex AST Impact & LPT Sharding"
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.vortex.outputs.should-run }}
+      execution_mode: ${{ steps.vortex.outputs.execution-mode }}
+      matrix: ${{ steps.vortex.outputs.matrix }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Deno 2
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Verify Formatting, Linter & Strict Type Check
+        run: |
+          deno fmt --check
+          deno lint
+          deno task check
+
+      - name: Run Vortex AST Impact Engine (Self-Analysis)
+        id: vortex
+        uses: ./
+        with:
+          shards: "2"
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'HEAD~1' }}
+          head-ref: "HEAD"
+
+  # 2. Execute Surgical Shards Dynamically Balanced by Vortex LPT
+  surgical-tests:
+    name: "🧪 Surgical Shard #${{ matrix.shard_id }}"
+    needs: vortex-brain
+    if: needs.vortex-brain.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.vortex-brain.outputs.matrix) }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Deno 2
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Execute Assigned Test Suites (${{ matrix.test_files }})
+        run: deno test --allow-read --allow-write --allow-env --allow-run=git ${{ matrix.test_files }}

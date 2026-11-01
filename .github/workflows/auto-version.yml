@@ -1,0 +1,27 @@
+name: "Auto Semantic Version & Floating v1 Tag"
+
+on:
+  push:
+    branches: ["master", "main"]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-release:
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync v1.0.0 & Floating v1 Marketplace Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          VERSION=$(deno eval "import denoJson from './deno.json' with { type: 'json' }; console.log(denoJson.version);")
+          git tag -fa "v${VERSION}" -m "Release v${VERSION}"
+          git tag -fa "v1" -m "Floating major tag v1 -> v${VERSION}"
+          git push origin "v${VERSION}" "v1" --force

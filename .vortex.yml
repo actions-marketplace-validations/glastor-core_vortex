@@ -1,0 +1,50 @@
+# ============================================================================
+# GLASTOR® Core — Vortex Configuration (.vortex.yml)
+# AST-Driven Predictive CI Orchestrator, Reverse DAG & LPT Test Splitter
+# https://github.com/glastor-core/vortex | https://glastor.es
+# ============================================================================
+
+base-ref: "HEAD~1"
+head-ref: "HEAD"
+shards: 4
+flaky-quarantine: true
+flaky-threshold: 0.35
+ignore-type-only: false
+runner-cost-per-min: 0.016
+telemetry-path: ".vortex/telemetry.json"
+report-file: "vortex-report.json"
+
+test-globs:
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "**/*_test.ts"
+  - "**/*.test.js"
+  - "**/*.spec.js"
+  - "**/*_test.py"
+  - "**/test_*.py"
+  - "**/*_test.go"
+
+fail-safe-globs:
+  - "deno.json"
+  - "deno.jsonc"
+  - "deno.lock"
+  - "package.json"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"
+  - "tsconfig.json"
+  - "Cargo.toml"
+  - "pyproject.toml"
+  - ".vortex.yml"
+  - ".github/workflows/**"
+
+ignore-dirs:
+  - ".git"
+  - "node_modules"
+  - "dist"
+  - "build"
+  - "coverage"
+  - ".next"
+  - "target"
+  - "__pycache__"
+  - ".venv"
+  - "vendor"

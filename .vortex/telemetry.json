@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "tests": {
+    "tests/vortex.test.ts": {
+      "durationMs": 420,
+      "flakinessRate": 0.0,
+      "lastUpdated": "2026-11-01T00:00:00.000Z"
+    },
+    "tests/scheduler.test.ts": {
+      "durationMs": 260,
+      "flakinessRate": 0.0,
+      "lastUpdated": "2026-11-01T00:00:00.000Z"
+    }
+  }
+}

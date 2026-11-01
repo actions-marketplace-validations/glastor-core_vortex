@@ -1,0 +1,38 @@
+{
+  "name": "@glastor-core/vortex",
+  "version": "1.0.0",
+  "exports": "./src/main.ts",
+  "tasks": {
+    "start": "deno run --allow-read --allow-write --allow-env --allow-run=git src/main.ts",
+    "analyze": "deno run --allow-read --allow-write --allow-env --allow-run=git src/main.ts --dry-run",
+    "test": "deno test --allow-read --allow-write --allow-env --allow-run=git",
+    "lint": "deno lint",
+    "fmt": "deno fmt",
+    "check": "deno check src/main.ts tests/vortex.test.ts tests/scheduler.test.ts",
+    "compile": "deno compile --allow-read --allow-write --allow-env --allow-run=git --output dist/vortex src/main.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false,
+    "proseWrap": "preserve",
+    "include": ["src/", "tests/", "README.md", "CHANGELOG.md"]
+  },
+  "lint": {
+    "include": ["src/", "tests/"],
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}
