@@ -1,6 +1,7 @@
 {
   "name": "@glastor-core/vortex",
   "version": "1.1.0",
+  "license": "MIT",
   "exports": "./src/main.ts",
   "tasks": {
     "setup": "git config core.hooksPath .githooks",

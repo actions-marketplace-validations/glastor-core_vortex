@@ -8,3 +8,4 @@ set -e
 
 COMMIT_MSG_FILE="$1"
 deno run --allow-read scripts/verify-commit.ts "$COMMIT_MSG_FILE"
+
