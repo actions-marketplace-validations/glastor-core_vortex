@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Vortex: AST-Driven Predictive CI, Symbol-Level Barrel Pruner & LPT Test Splitter"
+type: software
+version: "1.1.0"
+date-released: "2026-11-01"
+authors:
+  - family-names: "Cardoso"
+    given-names: "Andrés Antonio"
+    email: "ventas@glastor.es"
+repository-code: "https://github.com/glastor-core/vortex"
+url: "https://glastor.es"
+license: MIT
+keywords:
+  - "Predictive CI"
+  - "AST Impact Graph"
+  - "GitHub Actions"
+  - "Test Splitting"
+  - "LPT Bin-Packing"
+  - "Reverse Dependency DAG"
+  - "Barrel Pruning"
+  - "Flaky Test Quarantine"
+  - "EWMA Telemetry"
+  - "FinOps"
+  - "DevSecOps"
+  - "Deno"
+  - "TypeScript"
+abstract: "Motor universal de inteligencia predictiva de CI/CD y GitHub Action en Deno 2 y TypeScript (cero dependencias externas) para el análisis quirúrgico de radio de explosión por AST, podado de barrel files a nivel de símbolo, particionamiento dinámico LPT con ordenamiento Fail-Fast, cuarentena automática de flaky tests con aprendizaje EWMA y telemetría FinOps/Green-CI."

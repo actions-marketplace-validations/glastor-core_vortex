@@ -2,9 +2,9 @@ name: "Vortex CI — AST Impact, Lint, Type Check & Surgical Tests"
 
 on:
   push:
-    branches: ["master", "main"]
+    branches: ["main", "master"]
   pull_request:
-    branches: ["master", "main"]
+    branches: ["main", "master"]
   workflow_dispatch:
 
 permissions:

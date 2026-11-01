@@ -2,7 +2,7 @@ name: "Auto Semantic Version & Floating v1 Tag"
 
 on:
   push:
-    branches: ["master", "main"]
+    branches: ["main", "master"]
 
 permissions:
   contents: read

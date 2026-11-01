@@ -27,7 +27,7 @@
     "semiColons": true,
     "singleQuote": false,
     "proseWrap": "preserve",
-    "include": ["src/", "tests/", "README.md", "CHANGELOG.md"]
+    "include": ["src/", "tests/", "README.md", "CHANGELOG.md", "CONTRIBUTORS.md", ".github/"]
   },
   "lint": {
     "include": ["src/", "tests/"],

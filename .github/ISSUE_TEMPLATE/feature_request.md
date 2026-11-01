@@ -7,7 +7,9 @@ assignees: []
 ---
 
 ### Problem or Use Case
+
 Describe the CI/CD bottleneck or workflow scenario.
 
 ### Proposed Solution
+
 Describe how Vortex should analyze, prune, or schedule this case.

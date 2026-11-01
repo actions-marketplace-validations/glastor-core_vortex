@@ -1,0 +1,42 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# VORTEX AST PREDICTIVE CI & LPT ENGINE - CODEOWNERS CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+# Propósito: Definir la propiedad del código y protocolos de revisión.
+# Repositorio: https://github.com/glastor-core/vortex (rama main)
+# Referencia: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# ═══════════════════════════════════════════════════════════════════════════
+
+# [ GLOBAL MAINTAINER ]
+# Revisor por defecto de todos los activos del repositorio.
+* @glastor-dev
+
+# [ INFRAESTRUCTURA DE GITHUB ACTIONS & CONFIGURACIÓN ]
+# Workflows de CI/CD, telemetría y metadatos de la GitHub Action.
+.github/ @glastor-dev
+action.yml @glastor-dev
+deno.json @glastor-dev
+.vortex.yml @glastor-dev
+.vortex/ @glastor-dev
+
+# [ CÓDIGO FUENTE & MÓDULOS DEL MOTOR VORTEX ]
+# Módulos centrales de diff, AST, grafo DAG, planificador LPT, gobernanza y seguridad.
+/src/ @glastor-dev
+/src/git/ @glastor-dev
+/src/ast/ @glastor-dev
+/src/graph/ @glastor-dev
+/src/scheduler/ @glastor-dev
+/src/governance/ @glastor-dev
+/src/reporters/ @glastor-dev
+/src/security.ts @glastor-dev
+/tests/ @glastor-dev
+*.ts @glastor-dev
+
+# [ GOBERNANZA, COMPLIANCE & DOCUMENTACIÓN ]
+# Documentación pública y archivos de licencia/contribución.
+README.md @glastor-dev
+CHANGELOG.md @glastor-dev
+CONTRIBUTORS.md @glastor-dev
+CITATION.cff @glastor-dev
+LICENSE @glastor-dev
+
+# ═══════════════════════════════════════════════════════════════════════════
