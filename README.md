@@ -155,6 +155,43 @@ flowchart LR
 
 ---
 
+## 🔐 Required Permissions & Zero-Trust AppSec Posture
+
+**Vortex** adheres to the principle of **Least Privilege** (`GITHUB_TOKEN`) and includes built-in CWE/OWASP guards ([`src/security.ts`](./src/security.ts)):
+
+| Permission Scope | Access Level | When Required                                                                                               |
+| :--------------- | :----------: | :---------------------------------------------------------------------------------------------------------- |
+| `contents`       |    `read`    | **Always Required** — allows `actions/checkout@v4` to read repository history and AST files.                |
+| `pull-requests`  |   `write`    | **Optional** — only required when `post-pr-comment: 'true'` is enabled to publish/update sticky PR reports. |
+
+### Built-in CWE Security Hardening
+
+- **Zero External Dependencies:** 100% native Deno 2 standard runtime (`node:util`, `node:fs`, `node:path`) — immune to third-party npm/JSR supply-chain attacks.
+- **CWE-88 (Git Argument Injection):** Strictly validates `base-ref` and `head-ref` against leading `-` flags and injects `--` path delimiters.
+- **CWE-22 (Path Traversal Containment):** Enforces lexical workspace containment on `report-file`, `telemetry-path`, `update-telemetry`, and diff file paths.
+- **CWE-78 / CWE-93 (Workflow Command & Output Injection):** Escapes `%`, `\r`, `\n`, `:`, and `,` across all `::notice`/`::warning`/`::error` annotations and `$GITHUB_OUTPUT` values, and rejects shell metacharacters in test paths.
+- **CWE-918 (SSRF & DoS Prevention):** Validates `https://` transport on `GITHUB_API_URL` and enforces a strict `5000ms` `AbortSignal.timeout`.
+
+---
+
+## 💻 Local CLI Usage
+
+```bash
+# Run full AST impact analysis on current repository
+deno task start
+
+# Preview with custom shard count, ticket context, and blast-radius gate
+deno task start --base-ref HEAD~1 --shards 4 --max-blast-radius 85 --ticket-context "feat/GLS-402"
+
+# Format, lint, type-check, and execute the full 13-test suite
+deno fmt --check
+deno lint
+deno task check
+deno task test
+```
+
+---
+
 ## 🏢 Ecosystem & Corporate Governance
 
 Engineered and maintained by **GLASTOR® Core** (`@glastor-dev`):

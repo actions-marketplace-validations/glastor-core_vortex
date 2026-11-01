@@ -8,6 +8,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isSafeRelativeFilePath, resolveSafeWorkspacePath } from "../security.ts";
 import type {
   FinOpsMetrics,
   GitHubMatrixPayload,
@@ -23,17 +24,17 @@ import type {
  * Loads historical test timing and flakiness telemetry from `.vortex/telemetry.json` if present.
  */
 export function loadTelemetryStore(workspaceDir: string, telemetryPath: string): TelemetryStore {
-  const absPath = path.resolve(workspaceDir, telemetryPath);
-  if (fs.existsSync(absPath)) {
-    try {
+  try {
+    const absPath = resolveSafeWorkspacePath(workspaceDir, telemetryPath);
+    if (fs.existsSync(absPath)) {
       const raw = fs.readFileSync(absPath, "utf-8");
       const parsed = JSON.parse(raw) as TelemetryStore;
       if (parsed && typeof parsed.tests === "object") {
         return parsed;
       }
-    } catch {
-      // Fallback to empty store
     }
+  } catch {
+    // Fallback to empty store on missing/invalid/out-of-bounds path
   }
   return { version: "1.1.0", tests: {} };
 }
@@ -46,12 +47,12 @@ export function saveTelemetryStore(
   telemetryPath: string,
   store: TelemetryStore,
 ): void {
-  const absPath = path.resolve(workspaceDir, telemetryPath);
   try {
+    const absPath = resolveSafeWorkspacePath(workspaceDir, telemetryPath);
     fs.mkdirSync(path.dirname(absPath), { recursive: true });
     fs.writeFileSync(absPath, JSON.stringify(store, null, 2) + "\n", "utf-8");
   } catch {
-    // Ignore read-only filesystem
+    // Ignore read-only filesystem or blocked path traversal
   }
 }
 
@@ -145,6 +146,7 @@ export function updateTelemetryStoreEwma(
 
   for (const obs of observations) {
     const normPath = obs.testFile.replace(/\\/g, "/");
+    if (!isSafeRelativeFilePath(normPath)) continue;
     const existing = updatedTests[normPath];
     const flakySample = obs.flakyOrRetried ? 1.0 : 0.0;
 

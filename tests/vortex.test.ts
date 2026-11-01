@@ -32,6 +32,15 @@ import {
   generateMarkdownSummary,
 } from "../src/reporters/finops-reporter.ts";
 import { runVortexAnalysis } from "../src/main.ts";
+import {
+  escapeWorkflowCommandData,
+  escapeWorkflowCommandProperty,
+  isSafeGitHubApiUrl,
+  isSafeRelativeFilePath,
+  isValidGitRef,
+  resolveSafeWorkspacePath,
+  sanitizeGitHubOutputValue,
+} from "../src/security.ts";
 import type { ImpactedTest, ParsedModule } from "../src/types.ts";
 
 Deno.test("DiffParser: parses unified=0 hunks and detects comment-only noise", () => {
@@ -477,4 +486,35 @@ Deno.test("End-to-End Engine: executes Monorepo Alias resolution, Barrel Pruning
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+Deno.test("AppSec Zero-Trust Guards: blocks CWE-88, CWE-22, CWE-78, CWE-93, and CWE-918 vectors", () => {
+  // CWE-88 Git Argument Injection
+  assert.equal(isValidGitRef("HEAD~1"), true);
+  assert.equal(isValidGitRef("origin/main"), true);
+  assert.equal(isValidGitRef("--output=/tmp/pwn"), false);
+  assert.equal(isValidGitRef("-c"), false);
+  assert.equal(isValidGitRef("main;rm -rf /"), false);
+
+  // CWE-22 & CWE-78 Relative File Path Validation
+  assert.equal(isSafeRelativeFilePath("src/graph/dag.ts"), true);
+  assert.equal(isSafeRelativeFilePath("../etc/passwd"), false);
+  assert.equal(isSafeRelativeFilePath("src/../../secret.ts"), false);
+  assert.equal(isSafeRelativeFilePath("tests/foo;id.test.ts"), false);
+  assert.equal(isSafeRelativeFilePath("tests/foo\nbar.test.ts"), false);
+
+  // CWE-22 Workspace Containment
+  const root = Deno.cwd();
+  assert.equal(resolveSafeWorkspacePath(root, "vortex-report.json").startsWith(root), true);
+  assert.throws(() => resolveSafeWorkspacePath(root, "../../outside.json"), /CWE-22/);
+
+  // CWE-93 Workflow Command & GITHUB_OUTPUT Injection Escaping
+  assert.equal(escapeWorkflowCommandData("line1\n::error::injected"), "line1%0A::error::injected");
+  assert.equal(escapeWorkflowCommandProperty("a,b:c\n"), "a%2Cb%3Ac%0A");
+  assert.equal(sanitizeGitHubOutputValue("true\nshould-run=false"), "true should-run=false");
+
+  // CWE-918 SSRF HTTPS Enforcement
+  assert.equal(isSafeGitHubApiUrl("https://api.github.com"), true);
+  assert.equal(isSafeGitHubApiUrl("http://169.254.169.254/latest/meta-data"), false);
+  assert.equal(isSafeGitHubApiUrl("file:///etc/passwd"), false);
 });

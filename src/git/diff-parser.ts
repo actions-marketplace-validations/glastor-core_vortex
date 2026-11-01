@@ -7,6 +7,7 @@
  */
 
 import type { FileDiff } from "../types.ts";
+import { isSafeRelativeFilePath, isValidGitRef } from "../security.ts";
 
 /**
  * Checks whether a single code line is purely blank or a single-line comment across TS/JS/Py/Rust/Go.
@@ -94,12 +95,12 @@ export function parseUnifiedDiff(rawDiff: string): FileDiff[] {
 
   const flushFile = () => {
     flushHunk();
-    if (currentFile) {
+    if (currentFile && isSafeRelativeFilePath(currentFile.filePath)) {
       currentFile.isCommentOrFormatOnly = currentFile.hunks.length > 0 &&
         currentFile.hunks.every((h) => h.isSemanticNoise);
       files.push(currentFile);
-      currentFile = null;
     }
+    currentFile = null;
   };
 
   for (const line of lines) {
@@ -195,20 +196,23 @@ export function getWorkspaceGitDiff(
     }
   };
 
-  // 1. Try explicit range `baseRef...headRef`
-  let res = runGit(["diff", "--unified=0", `${baseRef}...${headRef}`]);
+  const safeBase = isValidGitRef(baseRef) ? baseRef.trim() : "HEAD~1";
+  const safeHead = isValidGitRef(headRef) ? headRef.trim() : "HEAD";
+
+  // 1. Try explicit range `safeBase...safeHead`
+  let res = runGit(["diff", "--unified=0", `${safeBase}...${safeHead}`, "--"]);
   if (res.success && res.stdout.trim().length > 0) {
     return parseUnifiedDiff(res.stdout);
   }
 
   // 2. Fallback: working tree + staged changes against HEAD
-  res = runGit(["diff", "--unified=0", "HEAD"]);
+  res = runGit(["diff", "--unified=0", "HEAD", "--"]);
   if (res.success && res.stdout.trim().length > 0) {
     return parseUnifiedDiff(res.stdout);
   }
 
   // 3. Fallback: latest commit diff (`git show --format= --unified=0 HEAD`)
-  res = runGit(["show", "--format=", "--unified=0", "HEAD"]);
+  res = runGit(["show", "--format=", "--unified=0", "HEAD", "--"]);
   if (res.success && res.stdout.trim().length > 0) {
     return parseUnifiedDiff(res.stdout);
   }

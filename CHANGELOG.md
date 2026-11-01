@@ -21,6 +21,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - **Native GitHub Workflow Annotations & Sticky PR Comments (`src/reporters/finops-reporter.ts`)**: Added `buildGitHubWorkflowAnnotations` (`::notice`, `::warning`, `::error` on exact file/line ranges) and idempotent `postOrUpdateStickyPrComment`.
 - **Blast-Radius Gatekeeper, Ticket Traceability & `nemesis` Bridge (`src/governance/gatekeeper.ts`)**: Automatically extracts Jira/Linear/GitHub issue keys (`GLS-402`, `PROJ-123`, `#42`), enforces `max-blast-radius` policy thresholds, and outputs `nemesis-target-files` for surgical DevSecOps auditing.
 
+### Security
+
+- **Zero-Trust AppSec Guards (`src/security.ts`)**: Added CWE-88 Git flag/argument injection prevention (`isValidGitRef` + `--` delimiter), CWE-22 workspace path traversal containment (`resolveSafeWorkspacePath`), CWE-78/CWE-93 GitHub Actions workflow command & `$GITHUB_OUTPUT` escaping (`escapeWorkflowCommandData`, `sanitizeGitHubOutputValue`), and CWE-918 SSRF HTTPS + `5000ms` timeout enforcement.
+- **GitHub Actions Hardening (`.github/workflows/ci.yml`, `.github/workflows/auto-version.yml`)**: Eliminated inline `${{ matrix.test_files }}` script interpolation via `env:` array parsing (`read -r -a`), scoped `contents: write` permissions to job-level, and added `.github/dependabot.yml` + issue/PR templates.
+
+## [1.1.0] - 2026-11-01
+
+### Added
+
+- **Symbol-Level AST Barrel Pruning (`src/ast/analyzer.ts`, `src/graph/dag.ts`)**: Extracts fine-grained named import bindings (`import { fnB } from "./utils.ts"`) and intra-module call references (`expandIntraModuleMutatedSymbols`), pruning dependency edges when a consumer only imports unmutated symbols from a shared barrel or utility module.
+- **EWMA Telemetry Auto-Learner (`src/scheduler/lpt-splitter.ts`)**: Added `parseTestReportObservations` and `updateTelemetryStoreEwma` (`--update-telemetry`) supporting both JUnit XML and JSON test reports to update historical durations and flakiness rates via Exponentially Weighted Moving Average ($\alpha = 0.3$).
+- **Monorepo & Path Alias Resolution (`src/ast/analyzer.ts`)**: Added `loadWorkspacePathAliases` to automatically resolve `deno.json` `imports` and `tsconfig.json` `compilerOptions.paths` (`@/`, `@core/*`) across workspace packages.
+- **Predictive Fail-Fast Intra-Shard Ordering (`src/scheduler/lpt-splitter.ts`)**: Added `computeFailFastPriorityScore` to order tests inside each LPT-balanced shard by shortest DAG hop distance (`depth`), instability propensity, and fastest execution time so regressions fail within the first seconds.
+- **Native GitHub Workflow Annotations & Sticky PR Comments (`src/reporters/finops-reporter.ts`)**: Added `buildGitHubWorkflowAnnotations` (`::notice`, `::warning`, `::error` on exact file/line ranges) and idempotent `postOrUpdateStickyPrComment`.
+- **Blast-Radius Gatekeeper, Ticket Traceability & `nemesis` Bridge (`src/governance/gatekeeper.ts`)**: Automatically extracts Jira/Linear/GitHub issue keys (`GLS-402`, `PROJ-123`, `#42`), enforces `max-blast-radius` policy thresholds, and outputs `nemesis-target-files` for surgical DevSecOps auditing.
+
+### Security
+
+- **Zero-Trust AppSec Guards (`src/security.ts`)**: Added CWE-88 Git flag/argument injection prevention (`isValidGitRef` + `--` delimiter), CWE-22 workspace path traversal containment (`resolveSafeWorkspacePath`), CWE-78/CWE-93 GitHub Actions workflow command & `$GITHUB_OUTPUT` escaping (`escapeWorkflowCommandData`, `sanitizeGitHubOutputValue`), and CWE-918 SSRF HTTPS + `5000ms` timeout enforcement.
+- **GitHub Actions Hardening (`.github/workflows/ci.yml`, `.github/workflows/auto-version.yml`)**: Eliminated inline `${{ matrix.test_files }}` script interpolation via `env:` array parsing (`read -r -a`), scoped `contents: write` permissions to job-level, and added `.github/dependabot.yml` + issue/PR templates.
+
 ## [1.0.0] - 2026-11-01
 
 ### Added

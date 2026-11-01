@@ -9,6 +9,13 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  escapeWorkflowCommandData,
+  escapeWorkflowCommandProperty,
+  isSafeGitHubApiUrl,
+  resolveSafeWorkspacePath,
+  sanitizeGitHubOutputValue,
+} from "../security.ts";
 import type { VortexAnalysisResult } from "../types.ts";
 
 export const STICKY_COMMENT_MARKER = "<!-- glastor-core-vortex-sticky-comment -->";
@@ -34,34 +41,54 @@ export function buildGitHubWorkflowAnnotations(result: VortexAnalysisResult): st
 
   // 1. Notice annotation for overall FinOps acceleration
   annotations.push(
-    `::notice title=Vortex Predictive CI (${result.executionMode.toUpperCase()})::Selected ${result.finops.selectedTestsCount}/${result.finops.totalTestsInRepo} test suites (-${result.finops.timeReductionPercent}% wall-clock time, ${result.finops.prunedBarrelEdgesCount} barrel edges pruned).`,
+    `::notice title=${
+      escapeWorkflowCommandProperty(`Vortex Predictive CI (${result.executionMode.toUpperCase()})`)
+    }::${
+      escapeWorkflowCommandData(
+        `Selected ${result.finops.selectedTestsCount}/${result.finops.totalTestsInRepo} test suites (-${result.finops.timeReductionPercent}% wall-clock time, ${result.finops.prunedBarrelEdgesCount} barrel edges pruned).`,
+      )
+    }`,
   );
 
   // 2. Inline file/line annotations for mutated AST symbols
   for (const sym of result.mutatedSymbols.slice(0, 10)) {
     if (sym.symbolName === "<module-scope>") continue;
     annotations.push(
-      `::notice file=${sym.filePath},line=${sym.lineRange[0]},endLine=${
-        sym.lineRange[1]
-      },title=Vortex Mutated AST Symbol::Symbol '${sym.symbolName}' (${sym.kind}) modified [L${
+      `::notice file=${escapeWorkflowCommandProperty(sym.filePath)},line=${
         sym.lineRange[0]
-      }-L${sym.lineRange[1]}].`,
+      },endLine=${sym.lineRange[1]},title=Vortex Mutated AST Symbol::${
+        escapeWorkflowCommandData(
+          `Symbol '${sym.symbolName}' (${sym.kind}) modified [L${sym.lineRange[0]}-L${
+            sym.lineRange[1]
+          }].`,
+        )
+      }`,
     );
   }
 
   // 3. Warning annotations for quarantined flaky test suites
   for (const q of result.quarantinedTests) {
     annotations.push(
-      `::warning file=${q.testFile},line=1,title=Vortex Flaky Test Quarantine::Isolated unstable test suite '${q.testFile}' (flakiness rate ${
-        (q.flakinessScore * 100).toFixed(0)
-      }%).`,
+      `::warning file=${
+        escapeWorkflowCommandProperty(q.testFile)
+      },line=1,title=Vortex Flaky Test Quarantine::${
+        escapeWorkflowCommandData(
+          `Isolated unstable test suite '${q.testFile}' (flakiness rate ${
+            (q.flakinessScore * 100).toFixed(0)
+          }%).`,
+        )
+      }`,
     );
   }
 
   // 4. Error annotation if Blast-Radius Gatekeeper threshold was exceeded
   if (!result.governance.blastRadiusPassed) {
     annotations.push(
-      `::error title=Vortex Blast-Radius Gatekeeper::AST Blast-Radius Score (${result.finops.blastRadiusScore}/100) exceeds policy threshold (${result.governance.maxBlastRadiusScore}/100).`,
+      `::error title=Vortex Blast-Radius Gatekeeper::${
+        escapeWorkflowCommandData(
+          `AST Blast-Radius Score (${result.finops.blastRadiusScore}/100) exceeds policy threshold (${result.governance.maxBlastRadiusScore}/100).`,
+        )
+      }`,
     );
   }
 
@@ -277,14 +304,21 @@ export async function postOrUpdateStickyPrComment(summaryMarkdown: string): Prom
   const eventPath = Deno.env.get("GITHUB_EVENT_PATH");
   const apiUrl = Deno.env.get("GITHUB_API_URL") || "https://api.github.com";
 
-  if (!token || !repo || !eventPath || !fs.existsSync(eventPath)) {
+  if (
+    !token ||
+    !repo ||
+    !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) ||
+    !isSafeGitHubApiUrl(apiUrl) ||
+    !eventPath ||
+    !fs.existsSync(eventPath)
+  ) {
     return false;
   }
 
   try {
     const eventPayload = JSON.parse(fs.readFileSync(eventPath, "utf-8"));
-    const prNumber = eventPayload?.pull_request?.number ?? eventPayload?.issue?.number;
-    if (!prNumber) return false;
+    const prNumber = Number(eventPayload?.pull_request?.number ?? eventPayload?.issue?.number);
+    if (!Number.isInteger(prNumber) || prNumber <= 0) return false;
 
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -293,26 +327,39 @@ export async function postOrUpdateStickyPrComment(summaryMarkdown: string): Prom
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
-    const commentsUrl = `${apiUrl}/repos/${repo}/issues/${prNumber}/comments?per_page=100`;
-    const listRes = await fetch(commentsUrl, { headers });
+    const commentsUrl = `${
+      apiUrl.replace(/\/$/, "")
+    }/repos/${repo}/issues/${prNumber}/comments?per_page=100`;
+    const listRes = await fetch(commentsUrl, {
+      headers,
+      signal: AbortSignal.timeout(5000),
+    });
     if (!listRes.ok) return false;
 
     const comments = (await listRes.json()) as Array<{ id: number; body?: string }>;
     const existing = comments.find((c) => c.body && c.body.includes(STICKY_COMMENT_MARKER));
 
     if (existing) {
-      const patchRes = await fetch(`${apiUrl}/repos/${repo}/issues/comments/${existing.id}`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({ body: summaryMarkdown }),
-      });
+      const patchRes = await fetch(
+        `${apiUrl.replace(/\/$/, "")}/repos/${repo}/issues/comments/${existing.id}`,
+        {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({ body: summaryMarkdown }),
+          signal: AbortSignal.timeout(5000),
+        },
+      );
       return patchRes.ok;
     } else {
-      const postRes = await fetch(`${apiUrl}/repos/${repo}/issues/${prNumber}/comments`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ body: summaryMarkdown }),
-      });
+      const postRes = await fetch(
+        `${apiUrl.replace(/\/$/, "")}/repos/${repo}/issues/${prNumber}/comments`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ body: summaryMarkdown }),
+          signal: AbortSignal.timeout(5000),
+        },
+      );
       return postRes.ok;
     }
   } catch {
@@ -331,12 +378,13 @@ export function emitVortexReports(
   emitAnnotations = false,
 ): { summaryMarkdown: string; reportPath: string; annotations: string[] } {
   const summaryMarkdown = generateMarkdownSummary(result);
-  const reportPath = path.resolve(workspaceDir, reportFile);
+  let reportPath = path.resolve(workspaceDir, "vortex-report.json");
 
   try {
+    reportPath = resolveSafeWorkspacePath(workspaceDir, reportFile);
     fs.writeFileSync(reportPath, JSON.stringify(result, null, 2), "utf-8");
   } catch {
-    // Non-fatal if read-only filesystem
+    // Non-fatal if read-only filesystem or blocked path traversal
   }
 
   const annotations = buildGitHubWorkflowAnnotations(result);
@@ -348,28 +396,34 @@ export function emitVortexReports(
 
   const githubOutput = Deno.env.get("GITHUB_OUTPUT");
   if (githubOutput) {
-    const affectedList = result.impactedTests.map((t) => t.testFile).join(" ");
-    const quarantinedList = result.quarantinedTests.map((t) => t.testFile).join(" ");
+    const affectedList = sanitizeGitHubOutputValue(
+      result.impactedTests.map((t) => t.testFile).join(" "),
+    );
+    const quarantinedList = sanitizeGitHubOutputValue(
+      result.quarantinedTests.map((t) => t.testFile).join(" "),
+    );
     const timeSavedSec = Math.round(result.finops.timeSavedMs / 100) / 10;
-    const ticketIdsStr = result.governance.detectedTicketIds.join(",");
-    const nemesisFilesStr = result.governance.nemesisTargetFiles.join(" ");
+    const ticketIdsStr = sanitizeGitHubOutputValue(result.governance.detectedTicketIds.join(","));
+    const nemesisFilesStr = sanitizeGitHubOutputValue(
+      result.governance.nemesisTargetFiles.join(" "),
+    );
 
     const kvLines = [
-      `should-run=${result.shouldRun}`,
-      `execution-mode=${result.executionMode}`,
+      `should-run=${sanitizeGitHubOutputValue(result.shouldRun)}`,
+      `execution-mode=${sanitizeGitHubOutputValue(result.executionMode)}`,
       `affected-tests=${affectedList}`,
-      `affected-count=${result.finops.selectedTestsCount}`,
-      `skipped-count=${result.finops.skippedTestsCount}`,
-      `pruned-edges-count=${result.finops.prunedBarrelEdgesCount}`,
+      `affected-count=${sanitizeGitHubOutputValue(result.finops.selectedTestsCount)}`,
+      `skipped-count=${sanitizeGitHubOutputValue(result.finops.skippedTestsCount)}`,
+      `pruned-edges-count=${sanitizeGitHubOutputValue(result.finops.prunedBarrelEdgesCount)}`,
       `quarantined-tests=${quarantinedList}`,
-      `time-saved-seconds=${timeSavedSec}`,
-      `savings-percent=${result.finops.timeReductionPercent}`,
-      `blast-radius-score=${result.finops.blastRadiusScore}`,
-      `blast-radius-passed=${result.governance.blastRadiusPassed}`,
+      `time-saved-seconds=${sanitizeGitHubOutputValue(timeSavedSec)}`,
+      `savings-percent=${sanitizeGitHubOutputValue(result.finops.timeReductionPercent)}`,
+      `blast-radius-score=${sanitizeGitHubOutputValue(result.finops.blastRadiusScore)}`,
+      `blast-radius-passed=${sanitizeGitHubOutputValue(result.governance.blastRadiusPassed)}`,
       `ticket-ids=${ticketIdsStr}`,
       `nemesis-target-files=${nemesisFilesStr}`,
-      `matrix=${JSON.stringify(result.matrix)}`,
-      `report-path=${reportPath}`,
+      `matrix=${sanitizeGitHubOutputValue(JSON.stringify(result.matrix))}`,
+      `report-path=${sanitizeGitHubOutputValue(reportPath)}`,
     ];
     try {
       fs.appendFileSync(githubOutput, kvLines.join("\n") + "\n", "utf-8");

@@ -6,8 +6,8 @@
  */
 
 import * as fs from "node:fs";
-import * as path from "node:path";
 import { loadConfig, VORTEX_VERSION } from "./config.ts";
+import { resolveSafeWorkspacePath } from "./security.ts";
 import { getWorkspaceGitDiff, parseUnifiedDiff } from "./git/diff-parser.ts";
 import { buildDagAndEvaluateImpact } from "./graph/dag.ts";
 import {
@@ -37,9 +37,12 @@ export function runVortexAnalysis(config: VortexConfig): VortexAnalysisResult {
   // Optional Pre-Step: Ingest JUnit XML / JSON test report into EWMA Telemetry Store
   let telemetryStore = loadTelemetryStore(config.workspaceDir, config.telemetryPath);
   if (config.updateTelemetryFromReport) {
-    const absReportPath = path.resolve(config.workspaceDir, config.updateTelemetryFromReport);
-    if (fs.existsSync(absReportPath)) {
-      try {
+    try {
+      const absReportPath = resolveSafeWorkspacePath(
+        config.workspaceDir,
+        config.updateTelemetryFromReport,
+      );
+      if (fs.existsSync(absReportPath)) {
         const rawReport = fs.readFileSync(absReportPath, "utf-8");
         const observations = parseTestReportObservations(rawReport);
         if (observations.length > 0) {
@@ -50,9 +53,9 @@ export function runVortexAnalysis(config: VortexConfig): VortexAnalysisResult {
           );
           saveTelemetryStore(config.workspaceDir, config.telemetryPath, telemetryStore);
         }
-      } catch {
-        // Ignore unreadable report
       }
+    } catch {
+      // Ignore unreadable or out-of-bounds report path
     }
   }
 

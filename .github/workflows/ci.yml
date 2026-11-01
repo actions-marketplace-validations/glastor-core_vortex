@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # 1. Dogfooding Vortex: Analyze AST Blast Radius & Generate LPT Matrix
   vortex-brain:
@@ -62,6 +66,10 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Execute Assigned Test Suites (${{ matrix.test_files }})
-        run: deno test --allow-read --allow-write --allow-env --allow-run=git ${{ matrix.test_files }}
-
+      - name: Execute Assigned Test Suites
+        shell: bash
+        env:
+          VORTEX_SHARD_FILES: ${{ matrix.test_files }}
+        run: |
+          read -r -a TEST_FILES <<< "$VORTEX_SHARD_FILES"
+          deno test --allow-read --allow-write --allow-env --allow-run=git "${TEST_FILES[@]}"
