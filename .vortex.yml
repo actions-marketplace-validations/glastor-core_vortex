@@ -1,5 +1,5 @@
 # ============================================================================
-# GLASTOR® Core — Vortex Configuration (.vortex.yml)
+# GLASTOR® Core — Vortex Configuration (.vortex.yml) v1.1.0
 # AST-Driven Predictive CI Orchestrator, Reverse DAG & LPT Test Splitter
 # https://github.com/glastor-core/vortex | https://glastor.es
 # ============================================================================
@@ -7,9 +7,15 @@
 base-ref: "HEAD~1"
 head-ref: "HEAD"
 shards: 4
+symbol-pruning: true
+ewma-alpha: 0.3
 flaky-quarantine: true
 flaky-threshold: 0.35
 ignore-type-only: false
+max-blast-radius: 100
+fail-on-blast-radius: false
+emit-annotations: true
+post-pr-comment: false
 runner-cost-per-min: 0.016
 telemetry-path: ".vortex/telemetry.json"
 report-file: "vortex-report.json"

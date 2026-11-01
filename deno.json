@@ -1,10 +1,10 @@
 {
   "name": "@glastor-core/vortex",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "exports": "./src/main.ts",
   "tasks": {
-    "start": "deno run --allow-read --allow-write --allow-env --allow-run=git src/main.ts",
-    "analyze": "deno run --allow-read --allow-write --allow-env --allow-run=git src/main.ts --dry-run",
+    "start": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run=git src/main.ts",
+    "analyze": "deno run --allow-read --allow-write --allow-env --allow-net --allow-run=git src/main.ts --dry-run",
     "test": "deno test --allow-read --allow-write --allow-env --allow-run=git",
     "lint": "deno lint",
     "fmt": "deno fmt",

@@ -1,6 +1,6 @@
 /**
  * @module config
- * @description Configuration loader for Vortex CLI, GitHub Action inputs, and `.vortex.yml`.
+ * @description Configuration loader for Vortex CLI, GitHub Action inputs, and `.vortex.yml` (v1.1.0).
  * @author GLASTOR® Core (@glastor-dev) <ventas@glastor.es>
  * @license MIT
  */
@@ -10,7 +10,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import type { VortexConfig } from "./types.ts";
 
-export const VORTEX_VERSION = "1.0.0";
+export const VORTEX_VERSION = "1.1.0";
 
 export const DEFAULT_CONFIG: VortexConfig = {
   workspaceDir: Deno.cwd(),
@@ -53,9 +53,15 @@ export const DEFAULT_CONFIG: VortexConfig = {
     "vendor",
   ],
   telemetryPath: ".vortex/telemetry.json",
+  ewmaAlpha: 0.3,
   flakyQuarantine: true,
   flakyThreshold: 0.35,
   ignoreTypeOnlyChanges: false,
+  symbolLevelPruning: true,
+  maxBlastRadius: 100,
+  failOnBlastRadius: false,
+  emitAnnotations: true,
+  postPrComment: false,
   runnerCostPerMinUsd: 0.016,
   reportFile: "vortex-report.json",
   writeSummary: true,
@@ -85,7 +91,6 @@ export function parseSimpleYaml(content: string): Record<string, unknown> {
       continue;
     }
 
-    // Check for list item `- value`
     if (trimmed.startsWith("- ") && currentListKey !== null) {
       const itemVal = stripQuotes(trimmed.slice(2).split(/\s+#/)[0].trim());
       if (itemVal) currentList.push(itemVal);
@@ -166,10 +171,20 @@ export function loadConfig(cliArgs: string[] = Deno.args): {
       "test-globs": { type: "string" },
       "fail-safe-globs": { type: "string" },
       "telemetry-path": { type: "string" },
+      "update-telemetry": { type: "string" },
+      "ewma-alpha": { type: "string" },
       "flaky-quarantine": { type: "boolean", default: true },
       "no-flaky-quarantine": { type: "boolean", default: false },
       "flaky-threshold": { type: "string" },
       "ignore-type-only": { type: "boolean", default: false },
+      "symbol-pruning": { type: "boolean", default: true },
+      "no-symbol-pruning": { type: "boolean", default: false },
+      "max-blast-radius": { type: "string" },
+      "fail-on-blast-radius": { type: "boolean", default: false },
+      "ticket-context": { type: "string" },
+      "emit-annotations": { type: "boolean", default: true },
+      "no-emit-annotations": { type: "boolean", default: false },
+      "post-pr-comment": { type: "boolean", default: false },
       "runner-cost": { type: "string" },
       "report-file": { type: "string", short: "o" },
       "write-summary": { type: "boolean", default: true },
@@ -217,7 +232,10 @@ export function loadConfig(cliArgs: string[] = Deno.args): {
   const rawShards = (parsed.values.shards as string | undefined) ||
     Deno.env.get("INPUT_SHARDS") ||
     String(fileCfg.shards ?? DEFAULT_CONFIG.shards);
-  const shards = Math.max(1, Math.min(64, Number.parseInt(rawShards, 10) || DEFAULT_CONFIG.shards));
+  const shards = Math.max(
+    1,
+    Math.min(64, Number.parseInt(rawShards, 10) || DEFAULT_CONFIG.shards),
+  );
 
   const testGlobs = parsed.values["test-globs"]
     ? parseCommaList(parsed.values["test-globs"] as string, DEFAULT_CONFIG.testGlobs)
@@ -244,6 +262,18 @@ export function loadConfig(cliArgs: string[] = Deno.args): {
     (fileCfg["telemetry-path"] as string | undefined) ||
     DEFAULT_CONFIG.telemetryPath;
 
+  const updateTelemetryFromReport = (parsed.values["update-telemetry"] as string | undefined) ||
+    Deno.env.get("INPUT_UPDATE_TELEMETRY") ||
+    (fileCfg["update-telemetry"] as string | undefined);
+
+  const rawAlpha = (parsed.values["ewma-alpha"] as string | undefined) ||
+    Deno.env.get("INPUT_EWMA_ALPHA") ||
+    String(fileCfg["ewma-alpha"] ?? DEFAULT_CONFIG.ewmaAlpha);
+  const ewmaAlpha = Math.max(
+    0.05,
+    Math.min(0.95, Number.parseFloat(rawAlpha) || DEFAULT_CONFIG.ewmaAlpha),
+  );
+
   let flakyQuarantine = parseBool(
     Deno.env.get("INPUT_FLAKY_QUARANTINE") ??
       (fileCfg["flaky-quarantine"] as boolean | string | undefined),
@@ -267,6 +297,57 @@ export function loadConfig(cliArgs: string[] = Deno.args): {
     Deno.env.get("INPUT_IGNORE_TYPE_ONLY") ??
       (fileCfg["ignore-type-only"] as boolean | string | undefined),
     DEFAULT_CONFIG.ignoreTypeOnlyChanges,
+  );
+
+  let symbolLevelPruning = parseBool(
+    Deno.env.get("INPUT_SYMBOL_PRUNING") ??
+      (fileCfg["symbol-pruning"] as boolean | string | undefined),
+    DEFAULT_CONFIG.symbolLevelPruning,
+  );
+  if (parsed.values["no-symbol-pruning"] === true) {
+    symbolLevelPruning = false;
+  } else if (cliArgs.includes("--symbol-pruning")) {
+    symbolLevelPruning = true;
+  }
+
+  const rawMaxBlast = (parsed.values["max-blast-radius"] as string | undefined) ||
+    Deno.env.get("INPUT_MAX_BLAST_RADIUS") ||
+    String(fileCfg["max-blast-radius"] ?? DEFAULT_CONFIG.maxBlastRadius);
+  const maxBlastRadius = Math.max(
+    0,
+    Math.min(
+      100,
+      Number.isNaN(Number.parseInt(rawMaxBlast, 10))
+        ? DEFAULT_CONFIG.maxBlastRadius
+        : Number.parseInt(rawMaxBlast, 10),
+    ),
+  );
+
+  const failOnBlastRadius = cliArgs.includes("--fail-on-blast-radius") ? true : parseBool(
+    Deno.env.get("INPUT_FAIL_ON_BLAST_RADIUS") ??
+      (fileCfg["fail-on-blast-radius"] as boolean | string | undefined),
+    DEFAULT_CONFIG.failOnBlastRadius,
+  );
+
+  const ticketContext = (parsed.values["ticket-context"] as string | undefined) ||
+    Deno.env.get("INPUT_TICKET_CONTEXT") ||
+    (fileCfg["ticket-context"] as string | undefined);
+
+  let emitAnnotations = parseBool(
+    Deno.env.get("INPUT_EMIT_ANNOTATIONS") ??
+      (fileCfg["emit-annotations"] as boolean | string | undefined),
+    DEFAULT_CONFIG.emitAnnotations,
+  );
+  if (parsed.values["no-emit-annotations"] === true) {
+    emitAnnotations = false;
+  } else if (cliArgs.includes("--emit-annotations")) {
+    emitAnnotations = true;
+  }
+
+  const postPrComment = cliArgs.includes("--post-pr-comment") ? true : parseBool(
+    Deno.env.get("INPUT_POST_PR_COMMENT") ??
+      (fileCfg["post-pr-comment"] as boolean | string | undefined),
+    DEFAULT_CONFIG.postPrComment,
   );
 
   const rawCost = (parsed.values["runner-cost"] as string | undefined) ||
@@ -297,9 +378,17 @@ export function loadConfig(cliArgs: string[] = Deno.args): {
       failSafeGlobs,
       ignoreDirs,
       telemetryPath,
+      updateTelemetryFromReport,
+      ewmaAlpha,
       flakyQuarantine,
       flakyThreshold,
       ignoreTypeOnlyChanges,
+      symbolLevelPruning,
+      maxBlastRadius,
+      failOnBlastRadius,
+      ticketContext,
+      emitAnnotations,
+      postPrComment,
       runnerCostPerMinUsd,
       reportFile,
       writeSummary,

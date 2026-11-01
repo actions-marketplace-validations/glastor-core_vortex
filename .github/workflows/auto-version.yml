@@ -25,3 +25,4 @@ jobs:
           git tag -fa "v${VERSION}" -m "Release v${VERSION}"
           git tag -fa "v1" -m "Floating major tag v1 -> v${VERSION}"
           git push origin "v${VERSION}" "v1" --force
+

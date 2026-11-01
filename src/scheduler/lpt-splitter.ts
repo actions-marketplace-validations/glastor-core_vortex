@@ -1,7 +1,7 @@
 /**
  * @module scheduler/lpt-splitter
- * @description LPT (Longest Processing Time) Bin-Packing Test Splitter, Flaky Test Quarantine Guard,
- *              and FinOps / Green-CI efficiency calculator.
+ * @description LPT (Longest Processing Time) Bin-Packing Test Splitter, Predictive Fail-Fast
+ *              Intra-Shard Prioritizer, EWMA Telemetry Auto-Learner, and FinOps Calculator (v1.1.0).
  * @author GLASTOR® Core (@glastor-dev) <ventas@glastor.es>
  * @license MIT
  */
@@ -14,6 +14,7 @@ import type {
   ImpactedTest,
   ParsedModule,
   TelemetryStore,
+  TestRunObservation,
   TestShard,
   TestTelemetryRecord,
 } from "../types.ts";
@@ -34,7 +35,147 @@ export function loadTelemetryStore(workspaceDir: string, telemetryPath: string):
       // Fallback to empty store
     }
   }
-  return { version: "1.0.0", tests: {} };
+  return { version: "1.1.0", tests: {} };
+}
+
+/**
+ * Persists the updated EWMA telemetry store to `.vortex/telemetry.json`.
+ */
+export function saveTelemetryStore(
+  workspaceDir: string,
+  telemetryPath: string,
+  store: TelemetryStore,
+): void {
+  const absPath = path.resolve(workspaceDir, telemetryPath);
+  try {
+    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    fs.writeFileSync(absPath, JSON.stringify(store, null, 2) + "\n", "utf-8");
+  } catch {
+    // Ignore read-only filesystem
+  }
+}
+
+/**
+ * Parses test run observations from either a JSON report or a JUnit XML report.
+ */
+export function parseTestReportObservations(rawContent: string): TestRunObservation[] {
+  const trimmed = rawContent.trim();
+  if (!trimmed) return [];
+
+  // 1. JSON format (`[{ "testFile": "tests/a.test.ts", "durationMs": 320, "passed": true }]`)
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const list = Array.isArray(parsed) ? parsed : (parsed.observations ?? parsed.tests ?? []);
+      if (Array.isArray(list)) {
+        return list
+          .filter((item) => item && typeof (item.testFile ?? item.file) === "string")
+          .map((item) => ({
+            testFile: String(item.testFile ?? item.file).replace(/\\/g, "/"),
+            durationMs: Math.max(1, Number(item.durationMs ?? item.duration ?? 250)),
+            passed: item.passed !== false,
+            flakyOrRetried: Boolean(item.flakyOrRetried ?? item.flaky ?? item.retried),
+          }));
+      }
+    } catch {
+      // Fallback to XML check
+    }
+  }
+
+  // 2. JUnit XML format (`<testcase classname="tests/a.test.ts" name="..." time="0.42">`)
+  if (trimmed.includes("<testcase")) {
+    const byFile = new Map<
+      string,
+      { durationMs: number; sawPass: boolean; sawFail: boolean; flakyAttr: boolean }
+    >();
+    const testcaseRegex = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+    let m: RegExpExecArray | null;
+    while ((m = testcaseRegex.exec(trimmed)) !== null) {
+      const attrs = m[1];
+      const inner = m[2] ?? "";
+      const fileMatch = /(?:file|classname)=["']([^"']+)["']/.exec(attrs);
+      if (!fileMatch) continue;
+      const testFile = fileMatch[1].replace(/\\/g, "/");
+      const timeMatch = /time=["']([0-9.]+)["']/.exec(attrs);
+      const durationMs = timeMatch ? Math.max(1, Math.round(Number(timeMatch[1]) * 1000)) : 200;
+      const failed = /<(?:failure|error)\b/.test(inner);
+      const flakyAttr = /flaky=["']true["']/.test(attrs) || /<flakyFailure\b/.test(inner);
+
+      const prev = byFile.get(testFile) ?? {
+        durationMs: 0,
+        sawPass: false,
+        sawFail: false,
+        flakyAttr: false,
+      };
+      prev.durationMs += durationMs;
+      if (failed) prev.sawFail = true;
+      else prev.sawPass = true;
+      if (flakyAttr) prev.flakyAttr = true;
+      byFile.set(testFile, prev);
+    }
+
+    const observations: TestRunObservation[] = [];
+    for (const [testFile, stats] of byFile.entries()) {
+      observations.push({
+        testFile,
+        durationMs: stats.durationMs,
+        passed: !stats.sawFail || stats.sawPass,
+        flakyOrRetried: stats.flakyAttr || (stats.sawFail && stats.sawPass),
+      });
+    }
+    return observations;
+  }
+
+  return [];
+}
+
+/**
+ * Updates the historical telemetry store using an Exponentially Weighted Moving Average (EWMA):
+ * $T_{\text{new}} = \alpha \cdot T_{\text{obs}} + (1 - \alpha) \cdot T_{\text{prev}}$
+ * $F_{\text{new}} = \alpha \cdot S_{\text{flaky}} + (1 - \alpha) \cdot F_{\text{prev}}$
+ */
+export function updateTelemetryStoreEwma(
+  store: TelemetryStore,
+  observations: TestRunObservation[],
+  alpha = 0.3,
+): TelemetryStore {
+  const clampedAlpha = Math.max(0.05, Math.min(0.95, alpha));
+  const nowIso = new Date().toISOString();
+  const updatedTests: Record<string, TestTelemetryRecord> = { ...store.tests };
+
+  for (const obs of observations) {
+    const normPath = obs.testFile.replace(/\\/g, "/");
+    const existing = updatedTests[normPath];
+    const flakySample = obs.flakyOrRetried ? 1.0 : 0.0;
+
+    if (!existing) {
+      updatedTests[normPath] = {
+        durationMs: Math.round(obs.durationMs),
+        flakinessRate: Math.round(flakySample * 1000) / 1000,
+        runsCount: 1,
+        lastUpdated: nowIso,
+      };
+    } else {
+      const newDuration = Math.round(
+        clampedAlpha * obs.durationMs + (1 - clampedAlpha) * existing.durationMs,
+      );
+      const newFlakiness = Math.round(
+        (clampedAlpha * flakySample + (1 - clampedAlpha) * existing.flakinessRate) * 1000,
+      ) / 1000;
+
+      updatedTests[normPath] = {
+        durationMs: Math.max(1, newDuration),
+        flakinessRate: Math.max(0, Math.min(1, newFlakiness)),
+        runsCount: (existing.runsCount ?? 1) + 1,
+        lastUpdated: nowIso,
+      };
+    }
+  }
+
+  return {
+    version: "1.1.0",
+    tests: updatedTests,
+  };
 }
 
 /**
@@ -49,14 +190,26 @@ export function estimateTestDurationMs(
     return Math.round(telemetry.durationMs);
   }
   if (!mod) return 450;
-  // Base cold-start overhead (200ms) + 120ms per test case + 2ms per source line
   return Math.max(150, 200 + mod.testCaseCount * 120 + mod.lineCount * 2);
 }
 
 /**
- * Greedy Longest Processing Time (LPT) Multi-Way Number Partitioning algorithm.
- * Sorts executable tests in descending order of duration and assigns each test to the shard
- * with the minimum accumulated load, minimizing parallel makespan ($C_{\max}$).
+ * Computes a Predictive Fail-Fast Priority Score for ordering tests *within* a shard.
+ * Higher score runs first:
+ * - Direct hop distance (`depth === 0` or `1`) gets highest priority (+1000 / (depth + 1))
+ * - Recent non-quarantined instability gets +200 * flakinessScore
+ * - Faster unit tests run before slower integration tests (+100 / (1 + durationSec))
+ */
+export function computeFailFastPriorityScore(test: ImpactedTest): number {
+  const depthScore = 1000 / (Math.max(0, test.depth) + 1);
+  const instabilityBoost = test.flakinessScore * 200;
+  const speedBoost = 100 / (1 + test.estimatedDurationMs / 1000);
+  return Math.round((depthScore + instabilityBoost + speedBoost) * 100) / 100;
+}
+
+/**
+ * Greedy Longest Processing Time (LPT) Multi-Way Number Partitioning algorithm
+ * combined with Predictive Fail-Fast Intra-Shard Ordering.
  */
 export function scheduleShardsLpt(
   executableTests: ImpactedTest[],
@@ -76,39 +229,50 @@ export function scheduleShardsLpt(
 
   const effectiveShardCount = Math.max(1, Math.min(maxShards, executableTests.length));
 
-  // Sort tests by descending estimated duration (tie-breaker: deterministic path order)
-  const sorted = [...executableTests].sort((a, b) => {
+  // Step 1: Sort descending by estimated duration for optimal LPT bin-packing across shards
+  const sortedForPacking = [...executableTests].sort((a, b) => {
     if (b.estimatedDurationMs !== a.estimatedDurationMs) {
       return b.estimatedDurationMs - a.estimatedDurationMs;
     }
     return a.testFile.localeCompare(b.testFile);
   });
 
-  const buckets: Array<{ files: string[]; loadMs: number }> = Array.from(
+  const buckets: Array<{ items: ImpactedTest[]; loadMs: number }> = Array.from(
     { length: effectiveShardCount },
-    () => ({ files: [], loadMs: 0 }),
+    () => ({ items: [], loadMs: 0 }),
   );
 
-  for (const test of sorted) {
-    // Find bucket with minimum current load
+  for (const test of sortedForPacking) {
+    test.failFastPriorityScore = computeFailFastPriorityScore(test);
     let minIdx = 0;
     for (let i = 1; i < buckets.length; i++) {
       if (buckets[i].loadMs < buckets[minIdx].loadMs) {
         minIdx = i;
       }
     }
-    buckets[minIdx].files.push(test.testFile);
+    buckets[minIdx].items.push(test);
     buckets[minIdx].loadMs += test.estimatedDurationMs;
   }
 
+  // Step 2: Inside each shard, order tests by Fail-Fast Priority Score (descending)
+  // so direct-impact and fast tests fail within the first seconds of shard execution
   const shards: TestShard[] = buckets
-    .filter((b) => b.files.length > 0)
-    .map((b, idx) => ({
-      shard_id: idx + 1,
-      test_files: b.files.join(" "),
-      files: b.files,
-      estimated_ms: Math.round(b.loadMs),
-    }));
+    .filter((b) => b.items.length > 0)
+    .map((b, idx) => {
+      const orderedItems = [...b.items].sort((x, y) => {
+        const scoreX = x.failFastPriorityScore ?? computeFailFastPriorityScore(x);
+        const scoreY = y.failFastPriorityScore ?? computeFailFastPriorityScore(y);
+        if (scoreY !== scoreX) return scoreY - scoreX;
+        return x.testFile.localeCompare(y.testFile);
+      });
+      const files = orderedItems.map((t) => t.testFile);
+      return {
+        shard_id: idx + 1,
+        test_files: files.join(" "),
+        files,
+        estimated_ms: Math.round(b.loadMs),
+      };
+    });
 
   const makespanMs = shards.reduce((max, s) => Math.max(max, s.estimated_ms), 0);
 
@@ -127,6 +291,7 @@ export function calculateFinOpsMetrics(params: {
   telemetryStore: TelemetryStore;
   selectedTests: ImpactedTest[];
   quarantinedTests: ImpactedTest[];
+  prunedBarrelEdgesCount?: number;
   makespanMs: number;
   runnerCostPerMinUsd: number;
   changedFilesCount: number;
@@ -138,6 +303,7 @@ export function calculateFinOpsMetrics(params: {
     telemetryStore,
     selectedTests,
     quarantinedTests,
+    prunedBarrelEdgesCount = 0,
     makespanMs,
     runnerCostPerMinUsd,
     changedFilesCount,
@@ -153,7 +319,6 @@ export function calculateFinOpsMetrics(params: {
     totalTestsInRepo - selectedTestsCount - quarantinedTestsCount,
   );
 
-  // Baseline duration: running all test files sequentially without AST pruning or LPT sharding
   const baselineDurationMs = allTestModules.reduce((acc, mod) => {
     const rec = telemetryStore.tests[mod.filePath];
     return acc + estimateTestDurationMs(mod, rec);
@@ -167,14 +332,10 @@ export function calculateFinOpsMetrics(params: {
     ? Math.round((wallClockSavedMs / baselineDurationMs) * 1000) / 10
     : 0;
 
-  // FinOps USD saved based on runner compute minutes avoided
   const savedMinutes = computeSavedMs / 60000;
   const estimatedCostSavedUsd = Math.round(savedMinutes * runnerCostPerMinUsd * 10000) / 10000;
-
-  // Green-CI CO2e saved (approx 2.4g CO2e per vCPU minute on cloud CI runners)
   const estimatedCo2SavedGrams = Math.round(savedMinutes * 2.4 * 100) / 100;
 
-  // Blast-radius score (0 - 100)
   let blastRadiusScore = 0;
   if (triggeredFailSafe) {
     blastRadiusScore = 100;
@@ -189,6 +350,7 @@ export function calculateFinOpsMetrics(params: {
     selectedTestsCount,
     skippedTestsCount,
     quarantinedTestsCount,
+    prunedBarrelEdgesCount,
     baselineDurationMs,
     optimizedMakespanMs: makespanMs,
     timeSavedMs: wallClockSavedMs,

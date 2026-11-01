@@ -35,10 +35,22 @@ inputs:
     description: "Comma-separated glob patterns that trigger full test suite execution when modified."
     required: false
     default: ""
+  symbol-pruning:
+    description: "Enable Symbol-Level AST Barrel Pruning (ignore consumers that only import unmutated symbols)."
+    required: false
+    default: "true"
   telemetry-path:
     description: "Path to historical test duration and flakiness JSON store."
     required: false
     default: ".vortex/telemetry.json"
+  update-telemetry:
+    description: "Optional path to a JUnit XML or JSON test report to ingest via EWMA auto-learning."
+    required: false
+    default: ""
+  ewma-alpha:
+    description: "EWMA smoothing factor alpha (0.05 - 0.95) for telemetry auto-learning."
+    required: false
+    default: "0.3"
   flaky-quarantine:
     description: "Automatically isolate flaky tests exceeding flaky-threshold from blocking the pipeline."
     required: false
@@ -49,6 +61,26 @@ inputs:
     default: "0.35"
   ignore-type-only:
     description: "Skip runtime test execution when only compile-time TypeScript interfaces/types are modified."
+    required: false
+    default: "false"
+  max-blast-radius:
+    description: "Maximum allowed AST blast-radius score (0 - 100) before Gatekeeper flags/fails."
+    required: false
+    default: "100"
+  fail-on-blast-radius:
+    description: "Fail the workflow step if blast-radius-score exceeds max-blast-radius."
+    required: false
+    default: "false"
+  ticket-context:
+    description: "Optional branch name, PR title, or commit string to extract Jira/Linear/GitHub issue keys."
+    required: false
+    default: ""
+  emit-annotations:
+    description: "Emit native GitHub Actions workflow annotations (::notice, ::warning, ::error)."
+    required: false
+    default: "true"
+  post-pr-comment:
+    description: "Post or update an idempotent sticky Pull Request comment when GITHUB_TOKEN is provided."
     required: false
     default: "false"
   runner-cost-per-min:
@@ -80,6 +112,9 @@ outputs:
   skipped-count:
     description: "Number of unaffected test suites safely skipped."
     value: ${{ steps.vortex-run.outputs.skipped-count }}
+  pruned-edges-count:
+    description: "Number of false-positive barrel dependency edges eliminated via Symbol-Level AST Pruning."
+    value: ${{ steps.vortex-run.outputs.pruned-edges-count }}
   quarantined-tests:
     description: "Space-separated list of flaky test files isolated in quarantine."
     value: ${{ steps.vortex-run.outputs.quarantined-tests }}
@@ -92,6 +127,15 @@ outputs:
   blast-radius-score:
     description: "Calculated AST blast-radius severity score (0 - 100)."
     value: ${{ steps.vortex-run.outputs.blast-radius-score }}
+  blast-radius-passed:
+    description: "Boolean string ('true' or 'false') indicating if blast-radius-score is within max-blast-radius."
+    value: ${{ steps.vortex-run.outputs.blast-radius-passed }}
+  ticket-ids:
+    description: "Comma-separated list of detected Jira, Linear, or GitHub issue keys (e.g., GLS-402,PROJ-12)."
+    value: ${{ steps.vortex-run.outputs.ticket-ids }}
+  nemesis-target-files:
+    description: "Space-separated list of modified and transitively impacted files for glastor-core/nemesis."
+    value: ${{ steps.vortex-run.outputs.nemesis-target-files }}
   matrix:
     description: "JSON payload for GitHub Actions strategy.matrix ({ include: [{ shard_id, test_files, files, estimated_ms }] })."
     value: ${{ steps.vortex-run.outputs.matrix }}
@@ -118,14 +162,22 @@ runs:
         INPUT_SHARDS: ${{ inputs.shards }}
         INPUT_TEST_GLOBS: ${{ inputs.test-globs }}
         INPUT_FAIL_SAFE_GLOBS: ${{ inputs.fail-safe-globs }}
+        INPUT_SYMBOL_PRUNING: ${{ inputs.symbol-pruning }}
         INPUT_TELEMETRY_PATH: ${{ inputs.telemetry-path }}
+        INPUT_UPDATE_TELEMETRY: ${{ inputs.update-telemetry }}
+        INPUT_EWMA_ALPHA: ${{ inputs.ewma-alpha }}
         INPUT_FLAKY_QUARANTINE: ${{ inputs.flaky-quarantine }}
         INPUT_FLAKY_THRESHOLD: ${{ inputs.flaky-threshold }}
         INPUT_IGNORE_TYPE_ONLY: ${{ inputs.ignore-type-only }}
+        INPUT_MAX_BLAST_RADIUS: ${{ inputs.max-blast-radius }}
+        INPUT_FAIL_ON_BLAST_RADIUS: ${{ inputs.fail-on-blast-radius }}
+        INPUT_TICKET_CONTEXT: ${{ inputs.ticket-context }}
+        INPUT_EMIT_ANNOTATIONS: ${{ inputs.emit-annotations }}
+        INPUT_POST_PR_COMMENT: ${{ inputs.post-pr-comment }}
         INPUT_RUNNER_COST_PER_MIN: ${{ inputs.runner-cost-per-min }}
         INPUT_REPORT_FILE: ${{ inputs.report-file }}
         INPUT_WRITE_SUMMARY: ${{ inputs.write-summary }}
       run: |
-        deno run --allow-read --allow-write --allow-env --allow-run=git \
+        deno run --allow-read --allow-write --allow-env --allow-net --allow-run=git \
           --config "${{ github.action_path }}/deno.json" \
           "${{ github.action_path }}/src/main.ts"

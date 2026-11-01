@@ -19,3 +19,4 @@ If you discover a security vulnerability within **Vortex**, please report it pri
 - **Lead Maintainer:** [@glastor-dev](https://github.com/glastor-dev) (GitHub Developer Program Member)
 
 We respond to all security reports within 24 hours and release patches within 72 hours of verification.
+

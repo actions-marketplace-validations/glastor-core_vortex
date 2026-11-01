@@ -1,7 +1,8 @@
 /**
  * @module ast/analyzer
  * @description Polyglot AST symbol & import dependency analyzer (TS/JS/Deno, Python, Rust, Go)
- *              with exact line-range tracking and diff-hunk intersection.
+ *              with exact line-range tracking, monorepo path alias resolution, and symbol-level
+ *              import bindings for barrel-file pruning (v1.1.0).
  * @author GLASTOR® Core (@glastor-dev) <ventas@glastor.es>
  * @license MIT
  */
@@ -11,6 +12,7 @@ import * as fs from "node:fs";
 import type {
   AstSymbol,
   FileDiff,
+  ImportBinding,
   MutatedSymbol,
   ParsedModule,
   SupportedLanguage,
@@ -79,6 +81,69 @@ export function detectLanguage(filePath: string): SupportedLanguage {
 }
 
 /**
+ * Loads path aliases and workspace package mappings from `deno.json`, `tsconfig.json`, and `package.json`.
+ * Returns a map of alias prefix/key -> target relative POSIX path prefix.
+ */
+export function loadWorkspacePathAliases(workspaceDir: string): Map<string, string> {
+  const aliases = new Map<string, string>();
+
+  const normalizeTarget = (rawTarget: string, baseUrl = "."): string => {
+    const clean = rawTarget.replace(/^\.\//, "").replace(/\*$/, "");
+    const baseClean = baseUrl.replace(/^\.\//, "").replace(/\/$/, "");
+    return baseClean && baseClean !== "." ? path.posix.join(baseClean, clean) : clean;
+  };
+
+  // 1. Check deno.json / deno.jsonc `imports`
+  for (const denoFile of ["deno.json", "deno.jsonc"]) {
+    const denoPath = path.join(workspaceDir, denoFile);
+    if (fs.existsSync(denoPath)) {
+      try {
+        const raw = fs.readFileSync(denoPath, "utf-8").replace(/^\s*\/\/.*$/gm, "");
+        const parsed = JSON.parse(raw) as { imports?: Record<string, string> };
+        if (parsed.imports && typeof parsed.imports === "object") {
+          for (const [key, target] of Object.entries(parsed.imports)) {
+            if (
+              typeof target === "string" &&
+              (target.startsWith("./") || target.startsWith("../") || target.startsWith("src/") ||
+                target.startsWith("packages/"))
+            ) {
+              aliases.set(key.replace(/\*$/, ""), normalizeTarget(target));
+            }
+          }
+        }
+      } catch {
+        // Ignore non-standard JSON
+      }
+    }
+  }
+
+  // 2. Check tsconfig.json `compilerOptions.paths` & `baseUrl`
+  const tsconfigPath = path.join(workspaceDir, "tsconfig.json");
+  if (fs.existsSync(tsconfigPath)) {
+    try {
+      const raw = fs.readFileSync(tsconfigPath, "utf-8").replace(/^\s*\/\/.*$/gm, "");
+      const parsed = JSON.parse(raw) as {
+        compilerOptions?: { baseUrl?: string; paths?: Record<string, string[]> };
+      };
+      const baseUrl = parsed.compilerOptions?.baseUrl ?? ".";
+      const pathsObj = parsed.compilerOptions?.paths;
+      if (pathsObj && typeof pathsObj === "object") {
+        for (const [aliasKey, targets] of Object.entries(pathsObj)) {
+          if (Array.isArray(targets) && targets.length > 0 && typeof targets[0] === "string") {
+            const cleanKey = aliasKey.replace(/\*$/, "");
+            aliases.set(cleanKey, normalizeTarget(targets[0], baseUrl));
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed tsconfig
+    }
+  }
+
+  return aliases;
+}
+
+/**
  * Extracts raw module import specifiers from source code across TS/JS, Python, Rust, and Go.
  */
 export function extractRawImportSpecifiers(
@@ -88,13 +153,11 @@ export function extractRawImportSpecifiers(
   const specifiers = new Set<string>();
 
   if (language === "typescript" || language === "javascript") {
-    // Static ES imports/exports: `import ... from "./x.ts"`, `export ... from "./x.ts"`, `import "./x.ts"`
     const esRegex = /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']/g;
     let m: RegExpExecArray | null;
     while ((m = esRegex.exec(content)) !== null) {
       specifiers.add(m[1].trim());
     }
-    // Dynamic `import("./x.ts")` and `require("./x.ts")`
     const dynRegex = /(?:import|require)\s*\(\s*["']([^"']+)["']\s*\)/g;
     while ((m = dynRegex.exec(content)) !== null) {
       specifiers.add(m[1].trim());
@@ -121,18 +184,18 @@ export function extractRawImportSpecifiers(
 }
 
 /**
- * Resolves a raw import specifier against the importing file's directory and known workspace files.
+ * Resolves a raw import specifier against the importing file's directory, monorepo path aliases,
+ * and known workspace files.
  */
 export function resolveWorkspaceImport(
   importerRelPath: string,
   specifier: string,
   knownFiles: Set<string>,
+  pathAliases?: Map<string, string>,
 ): string | null {
   const importerDir = path.posix.dirname(importerRelPath.replace(/\\/g, "/"));
 
-  // Relative TS/JS/Deno imports (`./foo`, `../bar/baz.ts`)
-  if (specifier.startsWith(".")) {
-    const candidateBase = path.posix.normalize(path.posix.join(importerDir, specifier));
+  const probeCandidate = (candidateBase: string): string | null => {
     const candidates = [
       candidateBase,
       `${candidateBase}.ts`,
@@ -147,11 +210,31 @@ export function resolveWorkspaceImport(
       if (knownFiles.has(c)) return c;
     }
     return null;
+  };
+
+  // 1. Check Monorepo / Deno / TSConfig Path Aliases (`@/utils/math`, `@core/db`)
+  if (pathAliases && pathAliases.size > 0 && !specifier.startsWith(".")) {
+    for (const [aliasPrefix, targetPrefix] of pathAliases.entries()) {
+      if (specifier === aliasPrefix || specifier.startsWith(aliasPrefix)) {
+        const rest = specifier.slice(aliasPrefix.length);
+        const mapped = path.posix.normalize(path.posix.join(targetPrefix, rest));
+        const resolved = probeCandidate(mapped);
+        if (resolved) return resolved;
+      }
+    }
   }
 
-  // Python module paths (`src.utils.math` or `.helpers`)
+  // 2. Relative TS/JS/Deno imports (`./foo`, `../bar/baz.ts`)
+  if (specifier.startsWith(".")) {
+    const candidateBase = path.posix.normalize(path.posix.join(importerDir, specifier));
+    return probeCandidate(candidateBase);
+  }
+
+  // 3. Python / Rust / Go module paths
   if (
-    !specifier.startsWith("node:") && !specifier.startsWith("jsr:") && !specifier.startsWith("npm:")
+    !specifier.startsWith("node:") &&
+    !specifier.startsWith("jsr:") &&
+    !specifier.startsWith("npm:")
   ) {
     const slashSpec = specifier.replace(/\./g, "/").replace(/::/g, "/");
     const candidates = [
@@ -169,8 +252,101 @@ export function resolveWorkspaceImport(
 }
 
 /**
+ * Extracts fine-grained symbol-level import bindings (`import { fnA, fnB as x } from "./utils.ts"`)
+ * to enable Symbol-Level AST Barrel Pruning.
+ */
+export function extractImportBindings(
+  content: string,
+  language: SupportedLanguage,
+  importerRelPath: string,
+  knownFiles: Set<string>,
+  pathAliases?: Map<string, string>,
+): ImportBinding[] {
+  const bindings: ImportBinding[] = [];
+
+  if (language === "typescript" || language === "javascript") {
+    const stmtRegex =
+      /(import|export)\s+(?:type\s+)?([\s\S]*?)\s+from\s+["']([^"']+)["']|import\s+["']([^"']+)["']/g;
+    let m: RegExpExecArray | null;
+    while ((m = stmtRegex.exec(content)) !== null) {
+      const keyword = m[1] ?? "import";
+      const clause = (m[2] ?? "").trim();
+      const rawSpecifier = (m[3] ?? m[4] ?? "").trim();
+      if (!rawSpecifier) continue;
+
+      const resolvedFilePath = resolveWorkspaceImport(
+        importerRelPath,
+        rawSpecifier,
+        knownFiles,
+        pathAliases,
+      );
+      if (!resolvedFilePath) continue;
+
+      const isReExport = keyword === "export";
+      const importedSymbols: string[] = [];
+
+      if (!clause || clause === "*" || clause.startsWith("* as ")) {
+        importedSymbols.push("*");
+      } else {
+        // Check named braces `{ fnA, fnB as aliasB, type User }`
+        const braceMatch = /\{([\s\S]*?)\}/.exec(clause);
+        if (braceMatch) {
+          const items = braceMatch[1].split(",");
+          for (const item of items) {
+            const cleaned = item.replace(/^\s*type\s+/, "").trim();
+            if (!cleaned) continue;
+            const origName = cleaned.split(/\s+as\s+/)[0].trim();
+            if (origName) importedSymbols.push(origName);
+          }
+        }
+        // Check if there is also a default import outside `{ ... }`
+        const outsideBraces = clause.replace(/\{[\s\S]*?\}/, "").replace(/,/g, "").trim();
+        if (outsideBraces) {
+          importedSymbols.push("*");
+        }
+      }
+
+      bindings.push({
+        rawSpecifier,
+        resolvedFilePath,
+        importedSymbols: importedSymbols.length > 0 ? [...new Set(importedSymbols)] : ["*"],
+        isReExport,
+      });
+    }
+  } else if (language === "python") {
+    const pyFromRegex = /^\s*from\s+([.\w]+)\s+import\s+([^\r\n#]+)/gm;
+    let m: RegExpExecArray | null;
+    while ((m = pyFromRegex.exec(content)) !== null) {
+      const rawSpecifier = m[1].trim();
+      const clause = m[2].trim();
+      const resolvedFilePath = resolveWorkspaceImport(
+        importerRelPath,
+        rawSpecifier,
+        knownFiles,
+        pathAliases,
+      );
+      if (!resolvedFilePath) continue;
+
+      const importedSymbols = clause === "*" ? ["*"] : clause
+        .split(",")
+        .map((s) => s.trim().split(/\s+as\s+/)[0].trim())
+        .filter(Boolean);
+
+      bindings.push({
+        rawSpecifier,
+        resolvedFilePath,
+        importedSymbols: importedSymbols.length > 0 ? importedSymbols : ["*"],
+        isReExport: false,
+      });
+    }
+  }
+
+  return bindings;
+}
+
+/**
  * Extracts top-level AST declarations (functions, classes, constants, interfaces, types, enums)
- * with exact `[startLine, endLine]` boundaries using lexical brace & block scope tracking.
+ * with exact `[startLine, endLine]` boundaries and intra-module referenced identifiers.
  */
 export function extractAstSymbols(
   content: string,
@@ -199,7 +375,6 @@ export function extractAstSymbols(
       const startLine = i + 1;
       let endLine = startLine;
 
-      // Track brace depth or semicolon termination to find exact endLine of this declaration
       let braceDepth = 0;
       let parenDepth = 0;
       let sawOpeningBrace = false;
@@ -229,6 +404,9 @@ export function extractAstSymbols(
         }
       }
 
+      const bodySlice = lines.slice(startLine - 1, endLine).join("\n");
+      const referencedIdentifiers = extractBodyIdentifiers(bodySlice, name);
+
       symbols.push({
         name,
         kind,
@@ -236,6 +414,7 @@ export function extractAstSymbols(
         isTypeOnly,
         startLine,
         endLine,
+        referencedIdentifiers,
       });
       i = Math.max(i, endLine - 1);
     }
@@ -243,7 +422,7 @@ export function extractAstSymbols(
     const pyDeclRegex = /^(\s*)(?:async\s+)?(def|class)\s+([A-Za-z_][A-Za-z0-9_]*)/;
     for (let i = 0; i < lines.length; i++) {
       const match = pyDeclRegex.exec(lines[i]);
-      if (!match || match[1].length > 0) continue; // Top-level only
+      if (!match || match[1].length > 0) continue;
       const kind: SymbolKind = match[2] === "class" ? "class" : "function";
       const name = match[3];
       const startLine = i + 1;
@@ -257,6 +436,9 @@ export function extractAstSymbols(
         endLine = j + 1;
       }
 
+      const bodySlice = lines.slice(startLine - 1, endLine).join("\n");
+      const referencedIdentifiers = extractBodyIdentifiers(bodySlice, name);
+
       symbols.push({
         name,
         kind,
@@ -264,15 +446,65 @@ export function extractAstSymbols(
         isTypeOnly: false,
         startLine,
         endLine,
+        referencedIdentifiers,
       });
+      i = Math.max(i, endLine - 1);
     }
   }
 
   return symbols;
 }
 
+const RESERVED_KEYWORDS = new Set([
+  "export",
+  "import",
+  "from",
+  "function",
+  "class",
+  "const",
+  "let",
+  "var",
+  "interface",
+  "type",
+  "enum",
+  "return",
+  "if",
+  "else",
+  "for",
+  "while",
+  "switch",
+  "case",
+  "break",
+  "continue",
+  "new",
+  "true",
+  "false",
+  "null",
+  "undefined",
+  "async",
+  "await",
+  "number",
+  "string",
+  "boolean",
+  "void",
+  "Promise",
+]);
+
+function extractBodyIdentifiers(bodyText: string, selfName: string): string[] {
+  const cleaned = stripCommentsFromLine(bodyText);
+  const idRegex = /\b([A-Za-z_$][A-Za-z0-9_$]*)\b/g;
+  const ids = new Set<string>();
+  let m: RegExpExecArray | null;
+  while ((m = idRegex.exec(cleaned)) !== null) {
+    const token = m[1];
+    if (token !== selfName && !RESERVED_KEYWORDS.has(token)) {
+      ids.add(token);
+    }
+  }
+  return [...ids];
+}
+
 function stripCommentsFromLine(line: string): string {
-  // Remove single-line `//` comments and string literals so braces inside strings don't skew depth
   return line
     .replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`/g, '""')
     .replace(/\/\/.*$/, "");
@@ -296,6 +528,7 @@ export function parseWorkspaceFile(
   relPath: string,
   testGlobs: string[],
   knownFiles: Set<string>,
+  pathAliases?: Map<string, string>,
 ): ParsedModule {
   const normPath = relPath.replace(/\\/g, "/");
   const absPath = path.resolve(workspaceDir, normPath);
@@ -311,6 +544,7 @@ export function parseWorkspaceFile(
       language,
       isTestFile,
       imports: [],
+      importBindings: [],
       symbols: [],
       lineCount: 0,
       testCaseCount: isTestFile ? 1 : 0,
@@ -319,9 +553,16 @@ export function parseWorkspaceFile(
 
   const rawSpecifiers = extractRawImportSpecifiers(content, language);
   const resolvedImports = rawSpecifiers
-    .map((spec) => resolveWorkspaceImport(normPath, spec, knownFiles))
+    .map((spec) => resolveWorkspaceImport(normPath, spec, knownFiles, pathAliases))
     .filter((imp): imp is string => imp !== null);
 
+  const importBindings = extractImportBindings(
+    content,
+    language,
+    normPath,
+    knownFiles,
+    pathAliases,
+  );
   const symbols = extractAstSymbols(content, language);
   const lineCount = content.split(/\r?\n/).length;
   const testCaseCount = isTestFile ? countTestCases(content) : 0;
@@ -331,6 +572,7 @@ export function parseWorkspaceFile(
     language,
     isTestFile,
     imports: [...new Set(resolvedImports)],
+    importBindings,
     symbols,
     lineCount,
     testCaseCount,
@@ -338,8 +580,52 @@ export function parseWorkspaceFile(
 }
 
 /**
+ * Expands mutated symbols within the same file using intra-module call references:
+ * if `fnA` was mutated and `fnB` calls `fnA` inside the same file, `fnB` is also transitively mutated.
+ */
+export function expandIntraModuleMutatedSymbols(
+  directMutated: MutatedSymbol[],
+  moduleAst: ParsedModule | undefined,
+): MutatedSymbol[] {
+  if (!moduleAst || moduleAst.symbols.length === 0 || directMutated.length === 0) {
+    return directMutated;
+  }
+  if (directMutated.some((s) => s.symbolName === "<module-scope>")) {
+    return directMutated;
+  }
+
+  const activeNames = new Set(directMutated.map((s) => s.symbolName));
+  const resultMap = new Map<string, MutatedSymbol>();
+  for (const m of directMutated) {
+    resultMap.set(m.symbolName, m);
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const sym of moduleAst.symbols) {
+      if (activeNames.has(sym.name)) continue;
+      const refs = sym.referencedIdentifiers ?? [];
+      if (refs.some((r) => activeNames.has(r))) {
+        activeNames.add(sym.name);
+        resultMap.set(sym.name, {
+          filePath: moduleAst.filePath,
+          symbolName: sym.name,
+          kind: sym.kind,
+          isTypeOnly: sym.isTypeOnly,
+          lineRange: [sym.startLine, sym.endLine],
+        });
+        changed = true;
+      }
+    }
+  }
+
+  return [...resultMap.values()];
+}
+
+/**
  * Intersects modified line-range hunks (`FileDiff`) with the file's AST symbols (`ParsedModule`)
- * to determine exactly which functions, classes, or types were mutated.
+ * to determine exactly which functions, classes, or types were mutated, including intra-module callers.
  */
 export function detectMutatedSymbols(
   fileDiff: FileDiff,
@@ -395,5 +681,5 @@ export function detectMutatedSymbols(
     }
   }
 
-  return [...mutatedMap.values()];
+  return expandIntraModuleMutatedSymbols([...mutatedMap.values()], moduleAst);
 }

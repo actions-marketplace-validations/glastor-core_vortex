@@ -1,7 +1,8 @@
 /**
  * @module reporters/finops-reporter
  * @description Exports GitHub Actions `$GITHUB_OUTPUT`, `$GITHUB_STEP_SUMMARY` Markdown with
- *              Mermaid Blast-Radius DAG visualization, and JSON telemetry reports.
+ *              Mermaid Blast-Radius DAG visualization, Native GitHub Workflow Annotations,
+ *              Sticky PR Comments, and JSON telemetry reports (v1.1.0).
  * @author GLASTOR® Core (@glastor-dev) <ventas@glastor.es>
  * @license MIT
  */
@@ -9,6 +10,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { VortexAnalysisResult } from "../types.ts";
+
+export const STICKY_COMMENT_MARKER = "<!-- glastor-core-vortex-sticky-comment -->";
 
 /**
  * Formats milliseconds into human-readable duration (`1.42s`, `340ms`).
@@ -20,6 +23,49 @@ export function formatDuration(ms: number): string {
   const mins = Math.floor(sec / 60);
   const remSec = Math.round(sec % 60);
   return `${mins}m ${remSec}s`;
+}
+
+/**
+ * Generates native GitHub Actions Workflow Command annotations (`::notice`, `::warning`, `::error`)
+ * that render inline inside the Pull Request "Files changed" tab and Check summary.
+ */
+export function buildGitHubWorkflowAnnotations(result: VortexAnalysisResult): string[] {
+  const annotations: string[] = [];
+
+  // 1. Notice annotation for overall FinOps acceleration
+  annotations.push(
+    `::notice title=Vortex Predictive CI (${result.executionMode.toUpperCase()})::Selected ${result.finops.selectedTestsCount}/${result.finops.totalTestsInRepo} test suites (-${result.finops.timeReductionPercent}% wall-clock time, ${result.finops.prunedBarrelEdgesCount} barrel edges pruned).`,
+  );
+
+  // 2. Inline file/line annotations for mutated AST symbols
+  for (const sym of result.mutatedSymbols.slice(0, 10)) {
+    if (sym.symbolName === "<module-scope>") continue;
+    annotations.push(
+      `::notice file=${sym.filePath},line=${sym.lineRange[0]},endLine=${
+        sym.lineRange[1]
+      },title=Vortex Mutated AST Symbol::Symbol '${sym.symbolName}' (${sym.kind}) modified [L${
+        sym.lineRange[0]
+      }-L${sym.lineRange[1]}].`,
+    );
+  }
+
+  // 3. Warning annotations for quarantined flaky test suites
+  for (const q of result.quarantinedTests) {
+    annotations.push(
+      `::warning file=${q.testFile},line=1,title=Vortex Flaky Test Quarantine::Isolated unstable test suite '${q.testFile}' (flakiness rate ${
+        (q.flakinessScore * 100).toFixed(0)
+      }%).`,
+    );
+  }
+
+  // 4. Error annotation if Blast-Radius Gatekeeper threshold was exceeded
+  if (!result.governance.blastRadiusPassed) {
+    annotations.push(
+      `::error title=Vortex Blast-Radius Gatekeeper::AST Blast-Radius Score (${result.finops.blastRadiusScore}/100) exceeds policy threshold (${result.governance.maxBlastRadiusScore}/100).`,
+    );
+  }
+
+  return annotations;
 }
 
 /**
@@ -39,11 +85,17 @@ export function buildMermaidImpactGraph(result: VortexAnalysisResult): string {
   const nodeIds = new Map<string, string>();
   const edges = new Set<string>();
 
-  const getNodeId = (label: string, kind: "src" | "test" | "cfg"): string => {
+  const getNodeId = (label: string, kind: "src" | "test" | "cfg" | "pruned"): string => {
     if (nodeIds.has(label)) return nodeIds.get(label)!;
     const id = `n${nodeIds.size + 1}`;
     const safeName = path.posix.basename(label);
-    const prefix = kind === "test" ? "🧪 " : kind === "cfg" ? "⚙️ " : "⚡ ";
+    const prefix = kind === "test"
+      ? "🧪 "
+      : kind === "cfg"
+      ? "⚙️ "
+      : kind === "pruned"
+      ? "✂️ "
+      : "⚡ ";
     lines.push(`  ${id}["${prefix}${safeName}"]`);
     nodeIds.set(label, id);
     return id;
@@ -62,12 +114,17 @@ export function buildMermaidImpactGraph(result: VortexAnalysisResult): string {
       continue;
     }
     for (let i = 0; i < chain.length - 1; i++) {
-      const fromKind = i === 0 ? "src" : "src";
+      const fromId = getNodeId(chain[i], "src");
       const toKind = i === chain.length - 2 ? "test" : "src";
-      const fromId = getNodeId(chain[i], fromKind);
       const toId = getNodeId(chain[i + 1], toKind);
       edges.add(`  ${fromId} --> ${toId}`);
     }
+  }
+
+  for (const pruned of result.prunedEdges.slice(0, 5)) {
+    const fromId = getNodeId(pruned.fromFile, "src");
+    const toId = getNodeId(pruned.toFile, "pruned");
+    edges.add(`  ${fromId} -. "pruned (${pruned.importedSymbols.join(",")})" .-> ${toId}`);
   }
 
   if (nodeIds.size === 0) {
@@ -93,16 +150,26 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
     ? "⚡ **SURGICAL AST EXECUTION**"
     : "🛡️ **FULL SUITE (FAIL-SAFE TRIGGERED)**";
 
+  const gateBadge = result.governance.blastRadiusPassed
+    ? `✅ Passed (\`${result.finops.blastRadiusScore} <= ${result.governance.maxBlastRadiusScore}\`)`
+    : `❌ Exceeded (\`${result.finops.blastRadiusScore} > ${result.governance.maxBlastRadiusScore}\`)`;
+
+  const ticketList = result.governance.detectedTicketIds.length > 0
+    ? `\`${result.governance.detectedTicketIds.join("`, `")}\``
+    : "_None detected_";
+
   const md: string[] = [
+    STICKY_COMMENT_MARKER,
     `## ⚡ Vortex — AST-Driven Predictive CI & Impact Graph Report`,
     "",
     `> **Execution Strategy:** ${modeBadge} — _${result.modeReason}_`,
     "",
-    `### 📊 FinOps & Pipeline Acceleration Telemetry`,
+    `### 📊 FinOps, Symbol Pruning & Governance Telemetry`,
     "",
     `| Metric | Baseline (Full Suite) | Vortex Optimized | Impact / Savings |`,
     `| :--- | :---: | :---: | :---: |`,
     `| **Executable Test Suites** | \`${result.finops.totalTestsInRepo}\` | \`${result.finops.selectedTestsCount}\` | **\`${result.finops.skippedTestsCount}\` safely skipped** |`,
+    `| **Symbol-Level Barrel Pruning** | \`0\` | \`${result.finops.prunedBarrelEdgesCount} edge(s)\` | Unrelated symbol imports pruned |`,
     `| **Pipeline Wall-Clock (Makespan)** | \`${
       formatDuration(result.finops.baselineDurationMs)
     }\` | \`${
@@ -110,7 +177,8 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
     }\` | **-${result.finops.timeReductionPercent}% (${
       formatDuration(result.finops.timeSavedMs)
     } saved)** |`,
-    `| **AST Blast-Radius Score** | \`100 / 100\` | \`${result.finops.blastRadiusScore} / 100\` | \`${result.mutatedSymbols.length}\` mutated AST symbols |`,
+    `| **Blast-Radius Gatekeeper** | \`100 / 100\` | \`${result.finops.blastRadiusScore} / 100\` | ${gateBadge} |`,
+    `| **Linked Ticket / Issue IDs** | — | ${ticketList} | DevSecOps Target Files: \`${result.governance.nemesisTargetFiles.length}\` |`,
     `| **Flaky Tests Quarantined** | \`0\` | \`${result.finops.quarantinedTestsCount}\` | Zero false-positive blocks |`,
     `| **FinOps & Green-CI Savings** | — | \`$${
       result.finops.estimatedCostSavedUsd.toFixed(4)
@@ -140,11 +208,28 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
     md.push("");
   }
 
+  if (result.prunedEdges.length > 0) {
+    md.push(
+      `### ✂️ Symbol-Level Pruned Barrel Edges`,
+      "",
+      `| Modified Source | Consumer File | Imported Symbols | Mutated in Source |`,
+      `| :--- | :--- | :---: | :---: |`,
+    );
+    for (const p of result.prunedEdges.slice(0, 15)) {
+      md.push(
+        `| \`${p.fromFile}\` | \`${p.toFile}\` | \`${p.importedSymbols.join(", ")}\` | \`${
+          p.mutatedSymbolsInSource.join(", ")
+        }\` |`,
+      );
+    }
+    md.push("");
+  }
+
   if (result.shards.length > 0) {
     md.push(
-      `### ⚖️ LPT Dynamic Matrix Shards (\`strategy.matrix\`)`,
+      `### ⚖️ LPT Dynamic Matrix Shards (Fail-Fast Ordered)`,
       "",
-      `| Shard ID | Assigned Test Suites | Est. Makespan | CLI Command |`,
+      `| Shard ID | Assigned Test Suites (Fail-Fast Order) | Est. Makespan | CLI Command |`,
       `| :---: | :--- | :---: | :--- |`,
     );
     for (const s of result.shards) {
@@ -183,14 +268,68 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
 }
 
 /**
- * Writes analysis outputs to `$GITHUB_OUTPUT`, `$GITHUB_STEP_SUMMARY`, and the JSON report file.
+ * Posts or updates an idempotent sticky Pull Request comment on GitHub when `GITHUB_TOKEN`
+ * and PR context (`GITHUB_EVENT_PATH`) are available.
+ */
+export async function postOrUpdateStickyPrComment(summaryMarkdown: string): Promise<boolean> {
+  const token = Deno.env.get("GITHUB_TOKEN");
+  const repo = Deno.env.get("GITHUB_REPOSITORY");
+  const eventPath = Deno.env.get("GITHUB_EVENT_PATH");
+  const apiUrl = Deno.env.get("GITHUB_API_URL") || "https://api.github.com";
+
+  if (!token || !repo || !eventPath || !fs.existsSync(eventPath)) {
+    return false;
+  }
+
+  try {
+    const eventPayload = JSON.parse(fs.readFileSync(eventPath, "utf-8"));
+    const prNumber = eventPayload?.pull_request?.number ?? eventPayload?.issue?.number;
+    if (!prNumber) return false;
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+
+    const commentsUrl = `${apiUrl}/repos/${repo}/issues/${prNumber}/comments?per_page=100`;
+    const listRes = await fetch(commentsUrl, { headers });
+    if (!listRes.ok) return false;
+
+    const comments = (await listRes.json()) as Array<{ id: number; body?: string }>;
+    const existing = comments.find((c) => c.body && c.body.includes(STICKY_COMMENT_MARKER));
+
+    if (existing) {
+      const patchRes = await fetch(`${apiUrl}/repos/${repo}/issues/comments/${existing.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ body: summaryMarkdown }),
+      });
+      return patchRes.ok;
+    } else {
+      const postRes = await fetch(`${apiUrl}/repos/${repo}/issues/${prNumber}/comments`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ body: summaryMarkdown }),
+      });
+      return postRes.ok;
+    }
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Writes analysis outputs to `$GITHUB_OUTPUT`, `$GITHUB_STEP_SUMMARY`, workflow annotations, and the JSON report file.
  */
 export function emitVortexReports(
   result: VortexAnalysisResult,
   workspaceDir: string,
   reportFile: string,
   writeSummary: boolean,
-): { summaryMarkdown: string; reportPath: string } {
+  emitAnnotations = false,
+): { summaryMarkdown: string; reportPath: string; annotations: string[] } {
   const summaryMarkdown = generateMarkdownSummary(result);
   const reportPath = path.resolve(workspaceDir, reportFile);
 
@@ -200,12 +339,20 @@ export function emitVortexReports(
     // Non-fatal if read-only filesystem
   }
 
-  // Write GitHub Actions $GITHUB_OUTPUT
+  const annotations = buildGitHubWorkflowAnnotations(result);
+  if (emitAnnotations && Deno.env.get("GITHUB_ACTIONS") === "true") {
+    for (const line of annotations) {
+      console.log(line);
+    }
+  }
+
   const githubOutput = Deno.env.get("GITHUB_OUTPUT");
   if (githubOutput) {
     const affectedList = result.impactedTests.map((t) => t.testFile).join(" ");
     const quarantinedList = result.quarantinedTests.map((t) => t.testFile).join(" ");
     const timeSavedSec = Math.round(result.finops.timeSavedMs / 100) / 10;
+    const ticketIdsStr = result.governance.detectedTicketIds.join(",");
+    const nemesisFilesStr = result.governance.nemesisTargetFiles.join(" ");
 
     const kvLines = [
       `should-run=${result.shouldRun}`,
@@ -213,10 +360,14 @@ export function emitVortexReports(
       `affected-tests=${affectedList}`,
       `affected-count=${result.finops.selectedTestsCount}`,
       `skipped-count=${result.finops.skippedTestsCount}`,
+      `pruned-edges-count=${result.finops.prunedBarrelEdgesCount}`,
       `quarantined-tests=${quarantinedList}`,
       `time-saved-seconds=${timeSavedSec}`,
       `savings-percent=${result.finops.timeReductionPercent}`,
       `blast-radius-score=${result.finops.blastRadiusScore}`,
+      `blast-radius-passed=${result.governance.blastRadiusPassed}`,
+      `ticket-ids=${ticketIdsStr}`,
+      `nemesis-target-files=${nemesisFilesStr}`,
       `matrix=${JSON.stringify(result.matrix)}`,
       `report-path=${reportPath}`,
     ];
@@ -227,7 +378,6 @@ export function emitVortexReports(
     }
   }
 
-  // Write GitHub Actions $GITHUB_STEP_SUMMARY
   const stepSummary = Deno.env.get("GITHUB_STEP_SUMMARY");
   if (writeSummary && stepSummary) {
     try {
@@ -237,5 +387,5 @@ export function emitVortexReports(
     }
   }
 
-  return { summaryMarkdown, reportPath };
+  return { summaryMarkdown, reportPath, annotations };
 }

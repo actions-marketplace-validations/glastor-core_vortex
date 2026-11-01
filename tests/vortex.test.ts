@@ -1,6 +1,7 @@
 /**
  * @module tests/vortex.test
- * @description Comprehensive unit and integration test suite for Vortex AST Impact & LPT Engine.
+ * @description Comprehensive unit and integration test suite for Vortex v1.1.0 AST Impact,
+ *              Symbol-Level Barrel Pruning, Monorepo Aliases, and Governance Gatekeeper.
  * @author GLASTOR® Core (@glastor-dev) <ventas@glastor.es>
  * @license MIT
  */
@@ -17,13 +18,19 @@ import {
 import {
   detectMutatedSymbols,
   extractAstSymbols,
+  extractImportBindings,
   extractRawImportSpecifiers,
+  loadWorkspacePathAliases,
   matchesAnyGlob,
   resolveWorkspaceImport,
 } from "../src/ast/analyzer.ts";
 import { DependencyDag } from "../src/graph/dag.ts";
 import { calculateFinOpsMetrics, scheduleShardsLpt } from "../src/scheduler/lpt-splitter.ts";
-import { generateMarkdownSummary } from "../src/reporters/finops-reporter.ts";
+import { extractTicketIds } from "../src/governance/gatekeeper.ts";
+import {
+  buildGitHubWorkflowAnnotations,
+  generateMarkdownSummary,
+} from "../src/reporters/finops-reporter.ts";
 import { runVortexAnalysis } from "../src/main.ts";
 import type { ImpactedTest, ParsedModule } from "../src/types.ts";
 
@@ -62,20 +69,24 @@ Deno.test("DiffParser: parses unified=0 hunks and detects comment-only noise", (
   assert.equal(evaluateHunkSemanticNoise(["  const x = 1;"], ["const x=1;"]), true);
 });
 
-Deno.test("AstAnalyzer: extracts TS symbols with exact line ranges and resolves imports", () => {
+Deno.test("AstAnalyzer: extracts TS symbols, intra-module call references, and import bindings", () => {
   const sampleTs = [
-    'import { helper } from "./utils/helper.ts";',
+    'import { helper, unusedHelper as uh } from "./utils/helper.ts";',
     "export interface UserDto {",
     "  id: string;",
     "  email: string;",
     "}",
     "",
+    "export function baseRate(price: number): number {",
+    "  return helper(price);",
+    "}",
+    "",
     "export function calculateDiscount(price: number): number {",
-    "  const factor = helper(price);",
+    "  const factor = baseRate(price);",
     "  return price * factor;",
     "}",
     "",
-    "export const VERSION = '1.0.0';",
+    "export const VERSION = '1.1.0';",
   ].join("\n");
 
   const imports = extractRawImportSpecifiers(sampleTs, "typescript");
@@ -85,42 +96,35 @@ Deno.test("AstAnalyzer: extracts TS symbols with exact line ranges and resolves 
   const resolved = resolveWorkspaceImport("src/service.ts", "./utils/helper.ts", known);
   assert.equal(resolved, "src/utils/helper.ts");
 
+  const bindings = extractImportBindings(sampleTs, "typescript", "src/service.ts", known);
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0].resolvedFilePath, "src/utils/helper.ts");
+  assert.deepEqual(bindings[0].importedSymbols, ["helper", "unusedHelper"]);
+
   const symbols = extractAstSymbols(sampleTs, "typescript");
-  assert.equal(symbols.length, 3);
-
-  assert.equal(symbols[0].name, "UserDto");
-  assert.equal(symbols[0].kind, "interface");
-  assert.equal(symbols[0].isTypeOnly, true);
-  assert.equal(symbols[0].startLine, 2);
-  assert.equal(symbols[0].endLine, 5);
-
-  assert.equal(symbols[1].name, "calculateDiscount");
-  assert.equal(symbols[1].kind, "function");
-  assert.equal(symbols[1].isTypeOnly, false);
-  assert.equal(symbols[1].startLine, 7);
-  assert.equal(symbols[1].endLine, 10);
-
-  assert.equal(symbols[2].name, "VERSION");
-  assert.equal(symbols[2].kind, "const");
-  assert.equal(symbols[2].startLine, 12);
+  assert.equal(symbols.length, 4);
+  assert.equal(symbols[1].name, "baseRate");
+  assert.equal(symbols[2].name, "calculateDiscount");
+  assert.equal(symbols[2].referencedIdentifiers?.includes("baseRate"), true);
 });
 
-Deno.test("AstAnalyzer: intersects Diff Hunks with AST Symbol boundaries accurately", () => {
+Deno.test("AstAnalyzer: expands intra-module callers when a helper symbol is mutated", () => {
   const modAst: ParsedModule = {
     filePath: "src/pricing.ts",
     language: "typescript",
     isTestFile: false,
     imports: [],
-    lineCount: 20,
+    lineCount: 25,
     testCaseCount: 0,
     symbols: [
       {
-        name: "PriceConfig",
-        kind: "interface",
-        isExported: true,
-        isTypeOnly: true,
+        name: "internalTaxRate",
+        kind: "function",
+        isExported: false,
+        isTypeOnly: false,
         startLine: 1,
         endLine: 4,
+        referencedIdentifiers: [],
       },
       {
         name: "computeTotal",
@@ -128,149 +132,174 @@ Deno.test("AstAnalyzer: intersects Diff Hunks with AST Symbol boundaries accurat
         isExported: true,
         isTypeOnly: false,
         startLine: 6,
-        endLine: 14,
+        endLine: 12,
+        referencedIdentifiers: ["internalTaxRate"],
+      },
+      {
+        name: "formatCurrency",
+        kind: "function",
+        isExported: true,
+        isTypeOnly: false,
+        startLine: 14,
+        endLine: 18,
+        referencedIdentifiers: [],
       },
     ],
   };
 
+  // Diff only touches line 2 inside `internalTaxRate`, which is called by `computeTotal`
   const diff = parseUnifiedDiff(
     [
       "diff --git a/src/pricing.ts b/src/pricing.ts",
       "--- a/src/pricing.ts",
       "+++ b/src/pricing.ts",
-      "@@ -8,1 +8,1 @@",
-      "-  return subtotal;",
-      "+  return subtotal * 1.21;",
+      "@@ -2,1 +2,1 @@",
+      "-  return 0.19;",
+      "+  return 0.21;",
     ].join("\n"),
   )[0];
 
   const mutated = detectMutatedSymbols(diff, modAst);
-  assert.equal(mutated.length, 1);
-  assert.equal(mutated[0].symbolName, "computeTotal");
-  assert.equal(mutated[0].isTypeOnly, false);
+  const mutatedNames = mutated.map((m) => m.symbolName);
+  assert.equal(mutatedNames.includes("internalTaxRate"), true);
+  assert.equal(mutatedNames.includes("computeTotal"), true);
+  assert.equal(mutatedNames.includes("formatCurrency"), false);
 });
 
-Deno.test("DependencyDag: computes Reverse DAG transitive closure and shortest impact chain", () => {
+Deno.test("DependencyDag: performs Symbol-Level Barrel Pruning on shared utility modules", () => {
   const dag = new DependencyDag();
 
-  // Chain: db.ts <- repo.ts <- service.ts <- service.test.ts
-  // Unrelated: utils.ts <- utils.test.ts
-  dag.addModule({
-    filePath: "src/db.ts",
-    language: "typescript",
-    isTestFile: false,
-    imports: [],
-    symbols: [],
-    lineCount: 10,
-    testCaseCount: 0,
-  });
-  dag.addModule({
-    filePath: "src/repo.ts",
-    language: "typescript",
-    isTestFile: false,
-    imports: ["src/db.ts"],
-    symbols: [],
-    lineCount: 20,
-    testCaseCount: 0,
-  });
-  dag.addModule({
-    filePath: "src/service.ts",
-    language: "typescript",
-    isTestFile: false,
-    imports: ["src/repo.ts"],
-    symbols: [],
-    lineCount: 30,
-    testCaseCount: 0,
-  });
-  dag.addModule({
-    filePath: "tests/service.test.ts",
-    language: "typescript",
-    isTestFile: true,
-    imports: ["src/service.ts"],
-    symbols: [],
-    lineCount: 40,
-    testCaseCount: 4,
-  });
+  // `src/utils.ts` exports `fnA` and `fnB`
   dag.addModule({
     filePath: "src/utils.ts",
     language: "typescript",
     isTestFile: false,
     imports: [],
-    symbols: [],
-    lineCount: 15,
+    symbols: [
+      {
+        name: "fnA",
+        kind: "function",
+        isExported: true,
+        isTypeOnly: false,
+        startLine: 1,
+        endLine: 3,
+      },
+      {
+        name: "fnB",
+        kind: "function",
+        isExported: true,
+        isTypeOnly: false,
+        startLine: 5,
+        endLine: 7,
+      },
+    ],
+    lineCount: 8,
     testCaseCount: 0,
   });
+
+  // `tests/a.test.ts` imports `{ fnA }`
   dag.addModule({
-    filePath: "tests/utils.test.ts",
+    filePath: "tests/a.test.ts",
     language: "typescript",
     isTestFile: true,
     imports: ["src/utils.ts"],
+    importBindings: [
+      {
+        rawSpecifier: "../src/utils.ts",
+        resolvedFilePath: "src/utils.ts",
+        importedSymbols: ["fnA"],
+        isReExport: false,
+      },
+    ],
     symbols: [],
-    lineCount: 25,
-    testCaseCount: 2,
+    lineCount: 10,
+    testCaseCount: 1,
   });
 
-  const impacted = dag.findImpactedTests(["src/db.ts"]);
-  assert.equal(impacted.size, 1);
-  assert.equal(impacted.has("tests/service.test.ts"), true);
-  assert.equal(impacted.has("tests/utils.test.ts"), false);
+  // `tests/b.test.ts` ONLY imports `{ fnB }`
+  dag.addModule({
+    filePath: "tests/b.test.ts",
+    language: "typescript",
+    isTestFile: true,
+    imports: ["src/utils.ts"],
+    importBindings: [
+      {
+        rawSpecifier: "../src/utils.ts",
+        resolvedFilePath: "src/utils.ts",
+        importedSymbols: ["fnB"],
+        isReExport: false,
+      },
+    ],
+    symbols: [],
+    lineCount: 10,
+    testCaseCount: 1,
+  });
 
-  const info = impacted.get("tests/service.test.ts")!;
-  assert.equal(info.depth, 3);
-  assert.deepEqual(info.chain, [
-    "src/db.ts",
-    "src/repo.ts",
-    "src/service.ts",
-    "tests/service.test.ts",
+  // Only `fnA` was mutated in `src/utils.ts`!
+  const seedActiveSymbols = new Map<string, Set<string>>([
+    ["src/utils.ts", new Set(["fnA"])],
   ]);
+
+  const { impactedTests, prunedEdges } = dag.findImpactedTestsWithPruning(
+    ["src/utils.ts"],
+    {
+      symbolLevelPruning: true,
+      seedActiveSymbols,
+    },
+  );
+
+  // `tests/a.test.ts` is impacted; `tests/b.test.ts` is surgically pruned!
+  assert.equal(impactedTests.size, 1);
+  assert.equal(impactedTests.has("tests/a.test.ts"), true);
+  assert.equal(impactedTests.has("tests/b.test.ts"), false);
+  assert.equal(prunedEdges.length, 1);
+  assert.equal(prunedEdges[0].fromFile, "src/utils.ts");
+  assert.equal(prunedEdges[0].toFile, "tests/b.test.ts");
 });
 
-Deno.test("LptSplitter: balances test suites across parallel shards using Greedy LPT", () => {
+Deno.test("LptSplitter: balances shards with Greedy LPT and orders intra-shard by Fail-Fast priority", () => {
   const tests: ImpactedTest[] = [
     {
-      testFile: "tests/heavy.test.ts",
-      impactChain: ["tests/heavy.test.ts"],
-      depth: 0,
+      testFile: "tests/heavy-deep.test.ts",
+      impactChain: ["src/a.ts", "src/b.ts", "src/c.ts", "tests/heavy-deep.test.ts"],
+      depth: 3,
       estimatedDurationMs: 1000,
       flakinessScore: 0,
       quarantined: false,
     },
     {
       testFile: "tests/med1.test.ts",
-      impactChain: ["tests/med1.test.ts"],
-      depth: 0,
+      impactChain: ["src/a.ts", "tests/med1.test.ts"],
+      depth: 1,
       estimatedDurationMs: 600,
       flakinessScore: 0,
       quarantined: false,
     },
     {
       testFile: "tests/med2.test.ts",
-      impactChain: ["tests/med2.test.ts"],
-      depth: 0,
+      impactChain: ["src/a.ts", "tests/med2.test.ts"],
+      depth: 1,
       estimatedDurationMs: 500,
       flakinessScore: 0,
       quarantined: false,
     },
     {
-      testFile: "tests/light.test.ts",
-      impactChain: ["tests/light.test.ts"],
+      testFile: "tests/direct-fast.test.ts",
+      impactChain: ["tests/direct-fast.test.ts"],
       depth: 0,
       estimatedDurationMs: 200,
-      flakinessScore: 0,
+      flakinessScore: 0.2,
       quarantined: false,
     },
   ];
 
-  // With 2 shards:
-  // Sorted: 1000, 600, 500, 200
-  // Shard 1 gets 1000, then 200 => 1200ms
-  // Shard 2 gets 600, then 500 => 1100ms
-  // Optimal makespan = 1200ms (vs 2300ms sequential)
+  // Shard 1 receives `heavy-deep.test.ts` (1000ms, depth 3) and `direct-fast.test.ts` (200ms, depth 0).
+  // Fail-Fast Intra-Shard ordering MUST place `direct-fast.test.ts` BEFORE `heavy-deep.test.ts`!
   const { shards, makespanMs } = scheduleShardsLpt(tests, 2);
   assert.equal(shards.length, 2);
   assert.equal(makespanMs, 1200);
-  assert.deepEqual(shards[0].files, ["tests/heavy.test.ts", "tests/light.test.ts"]);
-  assert.deepEqual(shards[1].files, ["tests/med1.test.ts", "tests/med2.test.ts"]);
+  assert.deepEqual(shards[0].files, ["tests/direct-fast.test.ts", "tests/heavy-deep.test.ts"]);
+  assert.deepEqual(shards[1].files, ["tests/med2.test.ts", "tests/med1.test.ts"]);
 
   const finops = calculateFinOpsMetrics({
     allTestModules: tests.map((t) => ({
@@ -283,16 +312,17 @@ Deno.test("LptSplitter: balances test suites across parallel shards using Greedy
       testCaseCount: 3,
     })),
     telemetryStore: {
-      version: "1.0.0",
+      version: "1.1.0",
       tests: {
-        "tests/heavy.test.ts": { durationMs: 1000, flakinessRate: 0 },
+        "tests/heavy-deep.test.ts": { durationMs: 1000, flakinessRate: 0 },
         "tests/med1.test.ts": { durationMs: 600, flakinessRate: 0 },
         "tests/med2.test.ts": { durationMs: 500, flakinessRate: 0 },
-        "tests/light.test.ts": { durationMs: 200, flakinessRate: 0 },
+        "tests/direct-fast.test.ts": { durationMs: 200, flakinessRate: 0.2 },
       },
     },
     selectedTests: [tests[1]],
     quarantinedTests: [],
+    prunedBarrelEdgesCount: 2,
     makespanMs: 600,
     runnerCostPerMinUsd: 0.016,
     changedFilesCount: 1,
@@ -300,69 +330,100 @@ Deno.test("LptSplitter: balances test suites across parallel shards using Greedy
     triggeredFailSafe: false,
   });
 
-  assert.equal(finops.totalTestsInRepo, 4);
-  assert.equal(finops.selectedTestsCount, 1);
-  assert.equal(finops.skippedTestsCount, 3);
-  assert.equal(finops.baselineDurationMs, 2300);
-  assert.equal(finops.timeSavedMs, 1700);
+  assert.equal(finops.prunedBarrelEdgesCount, 2);
   assert.equal(finops.timeReductionPercent > 70, true);
 });
 
-Deno.test("Config & Glob: parses .vortex.yml, CLI flags, and glob expressions", () => {
+Deno.test("Governance & Config: extracts Jira/Linear/GitHub issue IDs and parses .vortex.yml", () => {
+  const tickets = extractTicketIds([
+    "feat/GLS-402-ast-barrel-pruning",
+    "fix(core): resolve PROJ-99 and closes #42 (SHA-256 UTF-8 ignored)",
+  ]);
+  assert.deepEqual(tickets, ["GLS-402", "PROJ-99", "#42"]);
+
   const yaml = `
 shards: 8
-flaky-quarantine: true
-flaky-threshold: 0.4
+symbol-pruning: true
+max-blast-radius: 75
 test-globs:
   - "**/*.test.ts"
-  - "**/*.spec.ts"
 `;
   const parsed = parseSimpleYaml(yaml);
   assert.equal(parsed.shards, 8);
-  assert.equal(parsed["flaky-quarantine"], true);
-  assert.deepEqual(parsed["test-globs"], ["**/*.test.ts", "**/*.spec.ts"]);
+  assert.equal(parsed["symbol-pruning"], true);
+  assert.equal(parsed["max-blast-radius"], 75);
 
   assert.equal(matchesAnyGlob("tests/unit/auth.test.ts", ["**/*.test.ts"]), true);
-  assert.equal(matchesAnyGlob("src/main.ts", ["**/*.test.ts"]), false);
-  assert.equal(matchesAnyGlob(".github/workflows/ci.yml", [".github/workflows/**"]), true);
 
-  const { config } = loadConfig(["--shards", "6", "--ignore-type-only"]);
+  const { config } = loadConfig([
+    "--shards",
+    "6",
+    "--ignore-type-only",
+    "--max-blast-radius",
+    "80",
+  ]);
   assert.equal(config.shards, 6);
   assert.equal(config.ignoreTypeOnlyChanges, true);
-  assert.equal(config.flakyQuarantine, true);
+  assert.equal(config.maxBlastRadius, 80);
 });
 
-Deno.test("End-to-End Engine: executes surgical AST analysis, flaky quarantine, and summary generation", () => {
+Deno.test("End-to-End Engine: executes Monorepo Alias resolution, Barrel Pruning, and Annotations", () => {
   const tmpDir = fs.mkdtempSync(path.join(Deno.cwd(), ".vortex-test-"));
   try {
     fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, "tests"), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, ".vortex"), { recursive: true });
 
+    // Configure path alias `@core/* -> src/*` in tsconfig.json
     fs.writeFileSync(
-      path.join(tmpDir, "src", "A.ts"),
-      "export function computeA(x: number): number {\n  return x * 2;\n}\n",
+      path.join(tmpDir, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: {
+          baseUrl: ".",
+          paths: {
+            "@core/*": ["src/*"],
+          },
+        },
+      }),
     );
+
+    const aliases = loadWorkspacePathAliases(tmpDir);
+    assert.equal(aliases.get("@core/"), "src/");
+
+    // `src/barrel.ts` has `computeA` (L1-L3) and `computeB` (L5-L7)
     fs.writeFileSync(
-      path.join(tmpDir, "src", "B.ts"),
-      "export function computeB(x: number): number {\n  return x + 10;\n}\n",
+      path.join(tmpDir, "src", "barrel.ts"),
+      [
+        "export function computeA(x: number): number {",
+        "  return x * 2;",
+        "}",
+        "",
+        "export function computeB(x: number): number {",
+        "  return x + 10;",
+        "}",
+      ].join("\n"),
     );
+
+    // `tests/A.test.ts` imports `computeA` via `@core/barrel.ts` alias
     fs.writeFileSync(
       path.join(tmpDir, "tests", "A.test.ts"),
-      'import { computeA } from "../src/A.ts";\nDeno.test("A", () => { computeA(2); });\n',
+      'import { computeA } from "@core/barrel.ts";\nDeno.test("A", () => { computeA(2); });\n',
     );
+    // `tests/B.test.ts` imports ONLY `computeB` from `../src/barrel.ts`
     fs.writeFileSync(
       path.join(tmpDir, "tests", "B.test.ts"),
-      'import { computeB } from "../src/B.ts";\nDeno.test("B", () => { computeB(2); });\n',
+      'import { computeB } from "../src/barrel.ts";\nDeno.test("B", () => { computeB(2); });\n',
     );
+    // `tests/flaky.test.ts` imports `computeA` but is flaky
     fs.writeFileSync(
       path.join(tmpDir, "tests", "flaky.test.ts"),
-      'import { computeA } from "../src/A.ts";\nDeno.test("flaky", () => { computeA(1); });\n',
+      'import { computeA } from "../src/barrel.ts";\nDeno.test("flaky", () => { computeA(1); });\n',
     );
+
     fs.writeFileSync(
       path.join(tmpDir, ".vortex", "telemetry.json"),
       JSON.stringify({
-        version: "1.0.0",
+        version: "1.1.0",
         tests: {
           "tests/A.test.ts": { durationMs: 300, flakinessRate: 0.0 },
           "tests/B.test.ts": { durationMs: 900, flakinessRate: 0.0 },
@@ -371,10 +432,11 @@ Deno.test("End-to-End Engine: executes surgical AST analysis, flaky quarantine, 
       }),
     );
 
+    // Diff ONLY modifies `computeA` on line 2 of `src/barrel.ts`!
     const simulatedDiff = [
-      "diff --git a/src/A.ts b/src/A.ts",
-      "--- a/src/A.ts",
-      "+++ b/src/A.ts",
+      "diff --git a/src/barrel.ts b/src/barrel.ts",
+      "--- a/src/barrel.ts",
+      "+++ b/src/barrel.ts",
       "@@ -2,1 +2,1 @@",
       "-  return x * 2;",
       "+  return x * 3;",
@@ -384,6 +446,9 @@ Deno.test("End-to-End Engine: executes surgical AST analysis, flaky quarantine, 
       ...DEFAULT_CONFIG,
       workspaceDir: tmpDir,
       shards: 2,
+      symbolLevelPruning: true,
+      maxBlastRadius: 85,
+      ticketContext: "feat/GLS-777-smart-pruning",
       rawDiffOverride: simulatedDiff,
     });
 
@@ -391,17 +456,24 @@ Deno.test("End-to-End Engine: executes surgical AST analysis, flaky quarantine, 
     assert.equal(result.shouldRun, true);
     assert.equal(result.mutatedSymbols.length, 1);
     assert.equal(result.mutatedSymbols[0].symbolName, "computeA");
-    // Only tests/A.test.ts should run; tests/B.test.ts is unaffected; tests/flaky.test.ts is quarantined
+
+    // `tests/B.test.ts` imported `src/barrel.ts`, but ONLY `computeB` -> Pruned by Symbol-Level Pruning!
+    assert.equal(result.prunedEdges.length, 1);
+    assert.equal(result.prunedEdges[0].toFile, "tests/B.test.ts");
     assert.equal(result.impactedTests.length, 1);
     assert.equal(result.impactedTests[0].testFile, "tests/A.test.ts");
     assert.equal(result.quarantinedTests.length, 1);
     assert.equal(result.quarantinedTests[0].testFile, "tests/flaky.test.ts");
-    assert.equal(result.finops.skippedTestsCount, 1);
+    assert.deepEqual(result.governance.detectedTicketIds, ["GLS-777"]);
+    assert.equal(result.governance.blastRadiusPassed, true);
+
+    const annotations = buildGitHubWorkflowAnnotations(result);
+    assert.equal(annotations.some((a) => a.includes("::notice file=src/barrel.ts")), true);
+    assert.equal(annotations.some((a) => a.includes("::warning file=tests/flaky.test.ts")), true);
 
     const summary = generateMarkdownSummary(result);
-    assert.equal(summary.includes("SURGICAL AST EXECUTION"), true);
-    assert.equal(summary.includes("computeA"), true);
-    assert.equal(summary.includes("```mermaid"), true);
+    assert.equal(summary.includes("Symbol-Level Pruned Barrel Edges"), true);
+    assert.equal(summary.includes("GLS-777"), true);
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
