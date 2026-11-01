@@ -9,6 +9,7 @@
 
 import * as path from "node:path";
 import * as fs from "node:fs";
+import { isSafeLineForRegex, MAX_AST_FILE_BYTES } from "../security.ts";
 import type {
   AstSymbol,
   FileDiff,
@@ -361,6 +362,7 @@ export function extractAstSymbols(
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      if (!isSafeLineForRegex(line)) continue;
       const match = declRegex.exec(line);
       if (!match) continue;
 
@@ -537,6 +539,19 @@ export function parseWorkspaceFile(
 
   let content = "";
   try {
+    const stat = fs.statSync(absPath);
+    if (stat.size > MAX_AST_FILE_BYTES) {
+      return {
+        filePath: normPath,
+        language,
+        isTestFile,
+        imports: [],
+        importBindings: [],
+        symbols: [],
+        lineCount: 0,
+        testCaseCount: isTestFile ? 1 : 0,
+      };
+    }
     content = fs.readFileSync(absPath, "utf-8");
   } catch {
     return {

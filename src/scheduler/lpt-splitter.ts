@@ -258,23 +258,25 @@ export function scheduleShardsLpt(
 
   // Step 2: Inside each shard, order tests by Fail-Fast Priority Score (descending)
   // so direct-impact and fast tests fail within the first seconds of shard execution
-  const shards: TestShard[] = buckets
-    .filter((b) => b.items.length > 0)
-    .map((b, idx) => {
-      const orderedItems = [...b.items].sort((x, y) => {
-        const scoreX = x.failFastPriorityScore ?? computeFailFastPriorityScore(x);
-        const scoreY = y.failFastPriorityScore ?? computeFailFastPriorityScore(y);
-        if (scoreY !== scoreX) return scoreY - scoreX;
-        return x.testFile.localeCompare(y.testFile);
-      });
-      const files = orderedItems.map((t) => t.testFile);
-      return {
-        shard_id: idx + 1,
-        test_files: files.join(" "),
-        files,
-        estimated_ms: Math.round(b.loadMs),
-      };
+  const activeBuckets = buckets.filter((b) => b.items.length > 0);
+  const shardTotal = activeBuckets.length;
+
+  const shards: TestShard[] = activeBuckets.map((b, idx) => {
+    const orderedItems = [...b.items].sort((x, y) => {
+      const scoreX = x.failFastPriorityScore ?? computeFailFastPriorityScore(x);
+      const scoreY = y.failFastPriorityScore ?? computeFailFastPriorityScore(y);
+      if (scoreY !== scoreX) return scoreY - scoreX;
+      return x.testFile.localeCompare(y.testFile);
     });
+    const files = orderedItems.map((t) => t.testFile);
+    return {
+      shard_id: idx + 1,
+      shard_total: shardTotal,
+      test_files: files.join(" "),
+      files,
+      estimated_ms: Math.round(b.loadMs),
+    };
+  });
 
   const makespanMs = shards.reduce((max, s) => Math.max(max, s.estimated_ms), 0);
 

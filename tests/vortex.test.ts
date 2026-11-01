@@ -37,6 +37,7 @@ import {
   escapeWorkflowCommandData,
   escapeWorkflowCommandProperty,
   isSafeGitHubApiUrl,
+  isSafeLineForRegex,
   isSafeRelativeFilePath,
   isValidGitRef,
   resolveSafeWorkspacePath,
@@ -307,6 +308,8 @@ Deno.test("LptSplitter: balances shards with Greedy LPT and orders intra-shard b
   // Fail-Fast Intra-Shard ordering MUST place `direct-fast.test.ts` BEFORE `heavy-deep.test.ts`!
   const { shards, makespanMs } = scheduleShardsLpt(tests, 2);
   assert.equal(shards.length, 2);
+  assert.equal(shards[0].shard_total, 2);
+  assert.equal(shards[1].shard_total, 2);
   assert.equal(makespanMs, 1200);
   assert.deepEqual(shards[0].files, ["tests/direct-fast.test.ts", "tests/heavy-deep.test.ts"]);
   assert.deepEqual(shards[1].files, ["tests/med2.test.ts", "tests/med1.test.ts"]);
@@ -523,4 +526,8 @@ Deno.test("AppSec Zero-Trust Guards: blocks CWE-88, CWE-22, CWE-78, CWE-93, and 
   assert.equal(validateCommitMessage("feat(ast): add barrel pruning").valid, true);
   assert.equal(validateCommitMessage("sec(appsec): block CWE-88 flag injection").valid, true);
   assert.equal(validateCommitMessage("bad commit message without type").valid, false);
+
+  // CWE-1333 ReDoS Minified Line Guard
+  assert.equal(isSafeLineForRegex("export function normal() {}"), true);
+  assert.equal(isSafeLineForRegex("a".repeat(2500)), false);
 });

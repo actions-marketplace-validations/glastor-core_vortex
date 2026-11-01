@@ -11,6 +11,19 @@
 
 import * as path from "node:path";
 
+/** Maximum file size in bytes (1 MB) parsed by the AST scanner to prevent CWE-1333 / memory exhaustion. */
+export const MAX_AST_FILE_BYTES = 1_048_576;
+
+/** Maximum single-line character length (2000 chars) scanned by regexes to block minified bundle ReDoS (CWE-1333). */
+export const MAX_SCAN_LINE_LENGTH = 2_000;
+
+/**
+ * Checks whether a source line or file exceeds safe AST scanning thresholds (minified bundles / CWE-1333 guard).
+ */
+export function isSafeLineForRegex(line: string): boolean {
+  return line.length <= MAX_SCAN_LINE_LENGTH;
+}
+
 /**
  * Validates a Git revision reference (`base-ref` / `head-ref`) to prevent CWE-88 Argument Injection.
  * Rejects strings starting with `-`, containing whitespace, control characters, or shell metacharacters.

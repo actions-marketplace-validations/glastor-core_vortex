@@ -155,6 +155,8 @@ export interface ImpactedTest {
 export interface TestShard {
   /** 1-indexed shard identifier (`1` .. `N`). */
   shard_id: number;
+  /** Total number of active shards in the current matrix (`N`). */
+  shard_total: number;
   /** Space-separated list of test file paths ordered by Fail-Fast priority (`deno test ${{ matrix.test_files }}`). */
   test_files: string;
   /** Array of test file paths assigned to this shard (ordered by Fail-Fast priority). */

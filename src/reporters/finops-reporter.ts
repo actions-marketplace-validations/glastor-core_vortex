@@ -261,7 +261,7 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
     );
     for (const s of result.shards) {
       md.push(
-        `| **Shard #${s.shard_id}** | \`${s.files.join("`, `")}\` | \`${
+        `| **Shard #${s.shard_id}/${s.shard_total}** | \`${s.files.join("`, `")}\` | \`${
           formatDuration(s.estimated_ms)
         }\` | \`deno test ${s.test_files}\` |`,
       );

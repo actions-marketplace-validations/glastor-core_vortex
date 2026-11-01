@@ -1,4 +1,4 @@
-name: "Vortex CI — AST Impact, Lint, Type Check & Surgical Tests"
+name: "Vortex CI — AST Impact, Lint, Type Check, Surgical Tests & Nemesis Audit"
 
 on:
   push:
@@ -23,6 +23,7 @@ jobs:
       should_run: ${{ steps.vortex.outputs.should-run }}
       execution_mode: ${{ steps.vortex.outputs.execution-mode }}
       matrix: ${{ steps.vortex.outputs.matrix }}
+      nemesis_files: ${{ steps.vortex.outputs.nemesis-target-files }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -50,7 +51,7 @@ jobs:
 
   # 2. Execute Surgical Shards Dynamically Balanced by Vortex LPT
   surgical-tests:
-    name: "🧪 Surgical Shard #${{ matrix.shard_id }}"
+    name: "🧪 Surgical Shard (${{ matrix.shard_id }}/${{ matrix.shard_total }})"
     needs: vortex-brain
     if: needs.vortex-brain.outputs.should_run == 'true'
     runs-on: ubuntu-latest
@@ -73,3 +74,24 @@ jobs:
         run: |
           read -r -a TEST_FILES <<< "$VORTEX_SHARD_FILES"
           deno test --allow-read --allow-write --allow-env --allow-run=git "${TEST_FILES[@]}"
+
+  # 3. Companion Ecosystem Audit: glastor-core/nemesis DevSecOps & SBOM
+  nemesis-devsecops:
+    name: "🛡️ Nemesis DevSecOps & CycloneDX SBOM Audit"
+    needs: vortex-brain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run GLASTOR® Core Nemesis Auditor
+        uses: glastor-core/nemesis@v1
+        with:
+          scan-secrets: "true"
+          scan-hygiene: "true"
+          scan-licenses: "true"
+          generate-sbom: "true"
+          scan-sast: "false"
+          scan-sca: "false"
