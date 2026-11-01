@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# ============================================================================
+# GLASTOR® Core — Vortex Native Pre-Commit Hook (.githooks/pre-commit)
+# Shift-Left Quality, AppSec & AST Impact Verification
+# ============================================================================
+
+set -e
+deno run --allow-run=deno scripts/pre-commit.ts

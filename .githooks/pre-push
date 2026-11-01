@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# ============================================================================
+# GLASTOR® Core — Vortex Native Pre-Push Hook (.githooks/pre-push)
+# Push Protection: Verifies Type Safety, Test Suite & AST Impact Engine
+# ============================================================================
+
+set -e
+deno run --allow-run=deno scripts/pre-push.ts

@@ -1,0 +1,8 @@
+# Enforce LF line endings on Git hooks and shell scripts across Windows/Linux/macOS
+* text=auto eol=lf
+.githooks/* text eol=lf
+*.sh text eol=lf
+*.ts text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf

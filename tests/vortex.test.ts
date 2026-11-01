@@ -32,6 +32,7 @@ import {
   generateMarkdownSummary,
 } from "../src/reporters/finops-reporter.ts";
 import { runVortexAnalysis } from "../src/main.ts";
+import { validateCommitMessage } from "../scripts/verify-commit.ts";
 import {
   escapeWorkflowCommandData,
   escapeWorkflowCommandProperty,
@@ -517,4 +518,9 @@ Deno.test("AppSec Zero-Trust Guards: blocks CWE-88, CWE-22, CWE-78, CWE-93, and 
   assert.equal(isSafeGitHubApiUrl("https://api.github.com"), true);
   assert.equal(isSafeGitHubApiUrl("http://169.254.169.254/latest/meta-data"), false);
   assert.equal(isSafeGitHubApiUrl("file:///etc/passwd"), false);
+
+  // Conventional Commits Hook Guard (.githooks/commit-msg)
+  assert.equal(validateCommitMessage("feat(ast): add barrel pruning").valid, true);
+  assert.equal(validateCommitMessage("sec(appsec): block CWE-88 flag injection").valid, true);
+  assert.equal(validateCommitMessage("bad commit message without type").valid, false);
 });

@@ -177,6 +177,9 @@ flowchart LR
 ## 💻 Local CLI Usage
 
 ```bash
+# Activate native Shift-Left Git hooks (.githooks/pre-commit, commit-msg, pre-push)
+deno task setup
+
 # Run full AST impact analysis on current repository
 deno task start
 

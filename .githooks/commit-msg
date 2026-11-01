@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# ============================================================================
+# GLASTOR® Core — Vortex Native Commit-Msg Hook (.githooks/commit-msg)
+# Enforces .github/COMMIT_CONVENTION.md (Conventional Commits)
+# ============================================================================
+
+set -e
+
+COMMIT_MSG_FILE="$1"
+deno run --allow-read scripts/verify-commit.ts "$COMMIT_MSG_FILE"

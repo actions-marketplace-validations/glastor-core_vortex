@@ -10,9 +10,11 @@
 # Revisor por defecto de todos los activos del repositorio.
 * @glastor-dev
 
-# [ INFRAESTRUCTURA DE GITHUB ACTIONS & CONFIGURACIÓN ]
-# Workflows de CI/CD, telemetría y metadatos de la GitHub Action.
+# [ INFRAESTRUCTURA DE GITHUB ACTIONS, GIT HOOKS & CONFIGURACIÓN ]
+# Workflows de CI/CD, Git Hooks nativos, telemetría y metadatos de la GitHub Action.
 .github/ @glastor-dev
+.githooks/ @glastor-dev
+/scripts/ @glastor-dev
 action.yml @glastor-dev
 deno.json @glastor-dev
 .vortex.yml @glastor-dev

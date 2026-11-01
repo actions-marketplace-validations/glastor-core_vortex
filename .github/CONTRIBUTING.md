@@ -52,11 +52,14 @@ balanceo de carga:
 - **Deno:** 2.0+ instalado ([instrucciones de instalación](https://deno.com/)).
 - **Git:** 2.30+.
 
-### 1. Clonación del Repositorio
+### 1. Clonación del Repositorio y Activación de Git Hooks
 
 ```bash
 git clone https://github.com/glastor-core/vortex.git
 cd vortex
+
+# Activar Git hooks locales nativos (pre-commit, commit-msg y pre-push en .githooks/)
+deno task setup
 ```
 
 ### 2. Comandos y Tareas Disponibles
