@@ -1,0 +1,435 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 580" width="100%" height="100%" style="background: transparent;">
+  <defs>
+    <!-- Canvas & Card Gradients -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070b14" />
+      <stop offset="50%" stop-color="#0c1322" />
+      <stop offset="100%" stop-color="#060911" />
+    </linearGradient>
+
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e7490" />
+      <stop offset="50%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#7e22ce" />
+    </linearGradient>
+
+    <linearGradient id="stage1Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0c4a6e" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <linearGradient id="stage2Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+
+    <linearGradient id="stage3Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#581c87" />
+      <stop offset="100%" stop-color="#9333ea" />
+    </linearGradient>
+
+    <linearGradient id="stage4Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#78350f" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <linearGradient id="stage5Grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Drop Shadows & Glows -->
+    <filter id="cardGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.55" />
+    </filter>
+
+    <filter id="headerGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#06b6d4" flood-opacity="0.28" />
+    </filter>
+
+    <!-- Directional Arrow Markers -->
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#38bdf8" />
+    </marker>
+    <marker id="arrowIndigo" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#818cf8" />
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c084fc" />
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#fbbf24" />
+    </marker>
+  </defs>
+
+  <style>
+    .font-sans {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .font-mono {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .title {
+      font-weight: 700;
+      fill: #ffffff;
+      letter-spacing: -0.01em;
+    }
+    .subtitle {
+      font-weight: 400;
+      fill: #94a3b8;
+      font-size: 12.5px;
+    }
+    .stage-num {
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .stage-title {
+      font-weight: 700;
+      fill: #f8fafc;
+      font-size: 14px;
+    }
+    .module-pill {
+      font-weight: 600;
+      font-size: 10.5px;
+      fill: #e2e8f0;
+    }
+    .bullet {
+      font-weight: 400;
+      fill: #cbd5e1;
+      font-size: 11.5px;
+    }
+    .code-inline {
+      font-weight: 600;
+      font-size: 10.5px;
+      fill: #f1f5f9;
+    }
+    .tag {
+      font-weight: 600;
+      font-size: 10.5px;
+      fill: #94a3b8;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+  </style>
+
+  <!-- Outer Canvas Container -->
+  <rect x="14" y="14" width="1252" height="552" rx="20" fill="url(#bgGradient)" stroke="#1e293b" stroke-width="1.5" filter="url(#cardGlow)" />
+
+  <!-- Subtle Technical Blueprint Grid -->
+  <g opacity="0.10" stroke="#38bdf8" stroke-width="0.6">
+    <path d="M 14 95 L 1266 95 M 14 210 L 1266 210 M 14 345 L 1266 345 M 14 480 L 1266 480" stroke-dasharray="4 8" />
+    <path d="M 260 14 L 260 566 M 510 14 L 510 566 M 770 14 L 770 566 M 1020 14 L 1020 566" stroke-dasharray="4 8" />
+  </g>
+
+  <!-- Top-Left Badge: Engine Classification -->
+  <g transform="translate(40, 38)">
+    <rect x="0" y="0" width="248" height="28" rx="7" fill="#0f172a" stroke="#334155" stroke-width="1" />
+    <circle cx="15" cy="14" r="4.5" fill="#06b6d4" />
+    <text x="28" y="18" class="font-sans tag" fill="#cbd5e1">AST PREDICTIVE CI ENGINE • v1.1.0</text>
+  </g>
+
+  <!-- Top-Right Badge: Zero-Trust AppSec -->
+  <g transform="translate(982, 38)">
+    <rect x="0" y="0" width="258" height="28" rx="7" fill="#0f172a" stroke="#065f46" stroke-width="1" />
+    <circle cx="15" cy="14" r="4.5" fill="#10b981" />
+    <text x="28" y="18" class="font-sans tag" fill="#6ee7b7">0 DEPS • CWE-22/78/88/93/1333 SAFE</text>
+  </g>
+
+  <!-- ==================== ROOT HEADER: VORTEX BRAIN ==================== -->
+  <g transform="translate(380, 34)" filter="url(#headerGlow)">
+    <rect x="0" y="0" width="520" height="82" rx="14" fill="#0f172a" stroke="#06b6d4" stroke-width="1.8" />
+    <rect x="2" y="2" width="516" height="78" rx="12" fill="url(#headerGrad)" opacity="0.18" />
+
+    <!-- Vortex Cyclone / Lightning Emblem -->
+    <g transform="translate(22, 19)">
+      <circle cx="22" cy="22" r="22" fill="#083344" stroke="#06b6d4" stroke-width="1.5" />
+      <path d="M 24 9 L 13 23 L 21 23 L 19 35 L 31 20 L 23 20 Z" fill="#22d3ee" />
+    </g>
+
+    <text x="80" y="34" class="font-sans title" font-size="18">GLASTOR® Vortex — 5-Stage Predictive CI Pipeline</text>
+    <text x="80" y="54" class="font-sans subtitle">Surgical Diff Hunks ∩ Polyglot AST Symbols → Reverse DAG Pruning → Greedy LPT Shards</text>
+    <text x="80" y="70" class="font-mono code-inline" fill="#38bdf8">&lt; 30ms Cold-Start • Deno 2 Native • GitHub Actions Matrix &amp; FinOps Gatekeeper</text>
+  </g>
+
+  <!-- Connector Spine from Root Header to 5 Stages -->
+  <path d="M 640 116 L 640 142" fill="none" stroke="#06b6d4" stroke-width="2" />
+  <path d="M 140 142 L 1140 142" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4" />
+  <circle cx="140" cy="142" r="3.5" fill="#38bdf8" />
+  <circle cx="390" cy="142" r="3.5" fill="#818cf8" />
+  <circle cx="640" cy="142" r="3.5" fill="#c084fc" />
+  <circle cx="890" cy="142" r="3.5" fill="#fbbf24" />
+  <circle cx="1140" cy="142" r="3.5" fill="#34d399" />
+
+  <!-- ==================== STAGE 1: DIFF PARSER ==================== -->
+  <g transform="translate(30, 162)" filter="url(#cardGlow)">
+    <!-- Stage Header Card -->
+    <rect x="0" y="0" width="220" height="84" rx="12" fill="#0f172a" stroke="#0284c7" stroke-width="1.8" />
+    <rect x="2" y="2" width="216" height="80" rx="10" fill="url(#stage1Grad)" opacity="0.16" />
+
+    <!-- Icon: Git Diff Lines -->
+    <g transform="translate(14, 18)">
+      <rect x="0" y="0" width="36" height="36" rx="9" fill="#082f49" stroke="#38bdf8" stroke-width="1.2" />
+      <line x1="9" y1="13" x2="27" y2="13" stroke="#38bdf8" stroke-width="2" />
+      <line x1="9" y1="19" x2="22" y2="19" stroke="#34d399" stroke-width="2" />
+      <line x1="9" y1="25" x2="25" y2="25" stroke="#f87171" stroke-width="2" />
+    </g>
+
+    <text x="60" y="25" class="font-sans stage-num" fill="#38bdf8">STAGE 01 • GIT HUNKS</text>
+    <text x="60" y="44" class="font-sans stage-title">Diff Hunk Parser</text>
+    <rect x="60" y="54" width="136" height="20" rx="5" fill="#082f49" stroke="#0369a1" stroke-width="0.8" />
+    <text x="68" y="68" class="font-mono module-pill" fill="#7dd3fc">src/git/diff-parser.ts</text>
+
+    <!-- Details Card -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="206" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.2" />
+      <rect x="0" y="0" width="220" height="34" rx="12" fill="#1e293b" />
+      <rect x="0" y="22" width="220" height="12" fill="#1e293b" />
+      <circle cx="16" cy="17" r="3.5" fill="#38bdf8" />
+      <text x="28" y="21" class="font-sans card-title" font-size="12" fill="#f8fafc">Surgical Line Extraction</text>
+
+      <g transform="translate(14, 54)">
+        <circle cx="4" cy="0" r="2.5" fill="#38bdf8" />
+        <text x="14" y="4" class="font-sans bullet">Parses <tspan class="font-mono code-inline">--unified=0</tspan> hunks</text>
+
+        <circle cx="4" cy="34" r="2.5" fill="#38bdf8" />
+        <text x="14" y="38" class="font-sans bullet">Exact <tspan class="font-mono code-inline">[startLine, endLine]</tspan></text>
+
+        <circle cx="4" cy="68" r="2.5" fill="#38bdf8" />
+        <text x="14" y="72" class="font-sans bullet">Filters comments &amp; docstrings</text>
+
+        <circle cx="4" cy="102" r="2.5" fill="#38bdf8" />
+        <text x="14" y="106" class="font-sans bullet">Instant <tspan class="font-mono code-inline">SKIP</tspan> on semantic noise</text>
+
+        <circle cx="4" cy="136" r="2.5" fill="#38bdf8" />
+        <text x="14" y="140" class="font-sans bullet">Detects <tspan class="font-mono code-inline">failSafeGlobs</tspan> changes</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Arrow Stage 1 -> Stage 2 -->
+  <path d="M 250 204 L 276 204" fill="none" stroke="#38bdf8" stroke-width="2.2" marker-end="url(#arrowCyan)" />
+
+  <!-- ==================== STAGE 2: POLYGLOT AST ANALYZER ==================== -->
+  <g transform="translate(280, 162)" filter="url(#cardGlow)">
+    <rect x="0" y="0" width="220" height="84" rx="12" fill="#0f172a" stroke="#4f46e5" stroke-width="1.8" />
+    <rect x="2" y="2" width="216" height="80" rx="10" fill="url(#stage2Grad)" opacity="0.16" />
+
+    <!-- Icon: AST Nodes -->
+    <g transform="translate(14, 18)">
+      <rect x="0" y="0" width="36" height="36" rx="9" fill="#1e1b4b" stroke="#818cf8" stroke-width="1.2" />
+      <circle cx="18" cy="11" r="3.5" fill="#818cf8" />
+      <circle cx="11" cy="25" r="3.5" fill="#a5b4fc" />
+      <circle cx="25" cy="25" r="3.5" fill="#a5b4fc" />
+      <path d="M 16 14 L 12 22 M 20 14 L 24 22" stroke="#818cf8" stroke-width="1.5" />
+    </g>
+
+    <text x="60" y="25" class="font-sans stage-num" fill="#818cf8">STAGE 02 • AST &amp; ALIASES</text>
+    <text x="60" y="44" class="font-sans stage-title">Polyglot AST Engine</text>
+    <rect x="60" y="54" width="136" height="20" rx="5" fill="#1e1b4b" stroke="#4338ca" stroke-width="0.8" />
+    <text x="68" y="68" class="font-mono module-pill" fill="#a5b4fc">src/ast/analyzer.ts</text>
+
+    <!-- Details Card -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="206" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.2" />
+      <rect x="0" y="0" width="220" height="34" rx="12" fill="#1e293b" />
+      <rect x="0" y="22" width="220" height="12" fill="#1e293b" />
+      <circle cx="16" cy="17" r="3.5" fill="#818cf8" />
+      <text x="28" y="21" class="font-sans card-title" font-size="12" fill="#f8fafc">Symbol &amp; Call-Graph Map</text>
+
+      <g transform="translate(14, 54)">
+        <circle cx="4" cy="0" r="2.5" fill="#818cf8" />
+        <text x="14" y="4" class="font-sans bullet">TS / JS / Python / Rust / Go</text>
+
+        <circle cx="4" cy="34" r="2.5" fill="#818cf8" />
+        <text x="14" y="38" class="font-sans bullet">Intersects Hunks ∩ AST Symbols</text>
+
+        <circle cx="4" cy="68" r="2.5" fill="#818cf8" />
+        <text x="14" y="72" class="font-sans bullet">Intra-module caller propagation</text>
+
+        <circle cx="4" cy="102" r="2.5" fill="#818cf8" />
+        <text x="14" y="106" class="font-sans bullet">Extracts named <tspan class="font-mono code-inline">ImportBinding</tspan></text>
+
+        <circle cx="4" cy="136" r="2.5" fill="#818cf8" />
+        <text x="14" y="140" class="font-sans bullet">Resolves <tspan class="font-mono code-inline">deno.json</tspan> / <tspan class="font-mono code-inline">tsconfig</tspan></text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Arrow Stage 2 -> Stage 3 -->
+  <path d="M 500 204 L 526 204" fill="none" stroke="#818cf8" stroke-width="2.2" marker-end="url(#arrowIndigo)" />
+
+  <!-- ==================== STAGE 3: REVERSE DAG & BARREL PRUNER ==================== -->
+  <g transform="translate(530, 162)" filter="url(#cardGlow)">
+    <rect x="0" y="0" width="220" height="84" rx="12" fill="#0f172a" stroke="#9333ea" stroke-width="1.8" />
+    <rect x="2" y="2" width="216" height="80" rx="10" fill="url(#stage3Grad)" opacity="0.16" />
+
+    <!-- Icon: Scissors / Graph Pruning -->
+    <g transform="translate(14, 18)">
+      <rect x="0" y="0" width="36" height="36" rx="9" fill="#3b0764" stroke="#c084fc" stroke-width="1.2" />
+      <circle cx="11" cy="12" r="3" fill="#e9d5ff" />
+      <circle cx="25" cy="12" r="3" fill="#e9d5ff" />
+      <circle cx="18" cy="26" r="3" fill="#c084fc" />
+      <path d="M 11 15 L 18 23 M 25 15 L 18 23" stroke="#c084fc" stroke-width="1.5" stroke-dasharray="2 2" />
+    </g>
+
+    <text x="60" y="25" class="font-sans stage-num" fill="#c084fc">STAGE 03 • REVERSE DAG</text>
+    <text x="60" y="44" class="font-sans stage-title">Barrel Edge Pruner</text>
+    <rect x="60" y="54" width="126" height="20" rx="5" fill="#3b0764" stroke="#7e22ce" stroke-width="0.8" />
+    <text x="68" y="68" class="font-mono module-pill" fill="#d8b4fe">src/graph/dag.ts</text>
+
+    <!-- Details Card -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="206" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.2" />
+      <rect x="0" y="0" width="220" height="34" rx="12" fill="#1e293b" />
+      <rect x="0" y="22" width="220" height="12" fill="#1e293b" />
+      <circle cx="16" cy="17" r="3.5" fill="#c084fc" />
+      <text x="28" y="21" class="font-sans card-title" font-size="12" fill="#f8fafc">Symbol-Level Barrel Pruning</text>
+
+      <g transform="translate(14, 54)">
+        <circle cx="4" cy="0" r="2.5" fill="#c084fc" />
+        <text x="14" y="4" class="font-sans bullet">Reverse Dependency DAG (BFS)</text>
+
+        <circle cx="4" cy="34" r="2.5" fill="#c084fc" />
+        <text x="14" y="38" class="font-sans bullet">Solves the <tspan class="font-mono code-inline">index.ts</tspan> Barrel Trap</text>
+
+        <circle cx="4" cy="68" r="2.5" fill="#c084fc" />
+        <text x="14" y="72" class="font-sans bullet">Prunes unused symbol imports</text>
+
+        <circle cx="4" cy="102" r="2.5" fill="#c084fc" />
+        <text x="14" y="106" class="font-sans bullet">Tracks exact <tspan class="font-mono code-inline">impactChain</tspan> depth</text>
+
+        <circle cx="4" cy="136" r="2.5" fill="#c084fc" />
+        <text x="14" y="140" class="font-sans bullet">Records <tspan class="font-mono code-inline">prunedEdges</tspan> audit log</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Arrow Stage 3 -> Stage 4 -->
+  <path d="M 750 204 L 776 204" fill="none" stroke="#c084fc" stroke-width="2.2" marker-end="url(#arrowPurple)" />
+
+  <!-- ==================== STAGE 4: LPT SPLITTER & EWMA ==================== -->
+  <g transform="translate(780, 162)" filter="url(#cardGlow)">
+    <rect x="0" y="0" width="220" height="84" rx="12" fill="#0f172a" stroke="#d97706" stroke-width="1.8" />
+    <rect x="2" y="2" width="216" height="80" rx="10" fill="url(#stage4Grad)" opacity="0.16" />
+
+    <!-- Icon: Balanced Shards / Bars -->
+    <g transform="translate(14, 18)">
+      <rect x="0" y="0" width="36" height="36" rx="9" fill="#451a03" stroke="#fbbf24" stroke-width="1.2" />
+      <rect x="8" y="18" width="5" height="11" rx="1" fill="#fbbf24" />
+      <rect x="15.5" y="10" width="5" height="19" rx="1" fill="#f59e0b" />
+      <rect x="23" y="14" width="5" height="15" rx="1" fill="#fde68a" />
+    </g>
+
+    <text x="60" y="25" class="font-sans stage-num" fill="#fbbf24">STAGE 04 • LPT SCHEDULER</text>
+    <text x="60" y="44" class="font-sans stage-title">LPT &amp; EWMA Learner</text>
+    <rect x="60" y="54" width="148" height="20" rx="5" fill="#451a03" stroke="#b45309" stroke-width="0.8" />
+    <text x="66" y="68" class="font-mono module-pill" fill="#fde68a">scheduler/lpt-splitter.ts</text>
+
+    <!-- Details Card -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="206" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.2" />
+      <rect x="0" y="0" width="220" height="34" rx="12" fill="#1e293b" />
+      <rect x="0" y="22" width="220" height="12" fill="#1e293b" />
+      <circle cx="16" cy="17" r="3.5" fill="#fbbf24" />
+      <text x="28" y="21" class="font-sans card-title" font-size="12" fill="#f8fafc">Makespan &amp; Fail-Fast</text>
+
+      <g transform="translate(14, 54)">
+        <circle cx="4" cy="0" r="2.5" fill="#fbbf24" />
+        <text x="14" y="4" class="font-sans bullet">Greedy LPT (<tspan class="font-mono code-inline">4/3</tspan> optimal bound)</text>
+
+        <circle cx="4" cy="34" r="2.5" fill="#fbbf24" />
+        <text x="14" y="38" class="font-sans bullet">Fail-Fast intra-shard priority</text>
+
+        <circle cx="4" cy="68" r="2.5" fill="#fbbf24" />
+        <text x="14" y="72" class="font-sans bullet">EWMA (<tspan class="font-mono code-inline">α = 0.30</tspan>) auto-learning</text>
+
+        <circle cx="4" cy="102" r="2.5" fill="#fbbf24" />
+        <text x="14" y="106" class="font-sans bullet">JUnit XML &amp; JSON ingestion</text>
+
+        <circle cx="4" cy="136" r="2.5" fill="#fbbf24" />
+        <text x="14" y="140" class="font-sans bullet">Flaky test quarantine guard</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Arrow Stage 4 -> Stage 5 -->
+  <path d="M 1000 204 L 1026 204" fill="none" stroke="#fbbf24" stroke-width="2.2" marker-end="url(#arrowAmber)" />
+
+  <!-- ==================== STAGE 5: FINOPS & GOVERNANCE ==================== -->
+  <g transform="translate(1030, 162)" filter="url(#cardGlow)">
+    <rect x="0" y="0" width="220" height="84" rx="12" fill="#0f172a" stroke="#10b981" stroke-width="1.8" />
+    <rect x="2" y="2" width="216" height="80" rx="10" fill="url(#stage5Grad)" opacity="0.16" />
+
+    <!-- Icon: Shield + Check -->
+    <g transform="translate(14, 18)">
+      <rect x="0" y="0" width="36" height="36" rx="9" fill="#064e3b" stroke="#34d399" stroke-width="1.2" />
+      <path d="M 18 8 L 10 12 L 10 19 C 10 24 13.4 28.4 18 30 C 22.6 28.4 26 24 26 19 L 26 12 Z" fill="none" stroke="#34d399" stroke-width="1.6" />
+      <path d="M 14.5 19 L 17 21.5 L 22 16.5" fill="none" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" />
+    </g>
+
+    <text x="60" y="25" class="font-sans stage-num" fill="#34d399">STAGE 05 • GATEKEEPER</text>
+    <text x="60" y="44" class="font-sans stage-title">FinOps &amp; Governance</text>
+    <rect x="60" y="54" width="148" height="20" rx="5" fill="#064e3b" stroke="#047857" stroke-width="0.8" />
+    <text x="66" y="68" class="font-mono module-pill" fill="#6ee7b7">reporters/ + gatekeeper</text>
+
+    <!-- Details Card -->
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="206" rx="12" fill="#111827" stroke="#1e293b" stroke-width="1.2" />
+      <rect x="0" y="0" width="220" height="34" rx="12" fill="#1e293b" />
+      <rect x="0" y="22" width="220" height="12" fill="#1e293b" />
+      <circle cx="16" cy="17" r="3.5" fill="#34d399" />
+      <text x="28" y="21" class="font-sans card-title" font-size="12" fill="#f8fafc">CI Outputs &amp; DevSecOps</text>
+
+      <g transform="translate(14, 54)">
+        <circle cx="4" cy="0" r="2.5" fill="#34d399" />
+        <text x="14" y="4" class="font-sans bullet">15 <tspan class="font-mono code-inline">$GITHUB_OUTPUT</tspan> keys</text>
+
+        <circle cx="4" cy="34" r="2.5" fill="#34d399" />
+        <text x="14" y="38" class="font-sans bullet">Mermaid Blast-Radius &amp; Sticky PR</text>
+
+        <circle cx="4" cy="68" r="2.5" fill="#34d399" />
+        <text x="14" y="72" class="font-sans bullet">Jira / Linear Ticket &amp; Blast Gate</text>
+
+        <circle cx="4" cy="102" r="2.5" fill="#34d399" />
+        <text x="14" y="106" class="font-sans bullet">FinOps USD &amp; <tspan class="font-mono code-inline">CO2e</tspan> Telemetry</text>
+
+        <circle cx="4" cy="136" r="2.5" fill="#34d399" />
+        <text x="14" y="140" class="font-sans bullet">Bridges <tspan class="font-mono code-inline">nemesis</tspan> &amp; <tspan class="font-mono code-inline">specter</tspan></text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM TELEMETRY & OUTPUTS BAR ==================== -->
+  <g transform="translate(30, 490)">
+    <rect x="0" y="0" width="1220" height="52" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+
+    <circle cx="22" cy="26" r="4.5" fill="#22d3ee" />
+    <text x="36" y="30" class="font-sans tag" fill="#e2e8f0">ACTION OUTPUTS STREAM:</text>
+
+    <!-- Output Pills -->
+    <g transform="translate(215, 13)">
+      <rect x="0" y="0" width="118" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="59" y="17" text-anchor="middle" class="font-mono code-inline" fill="#38bdf8">should-run</text>
+
+      <rect x="128" y="0" width="136" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="196" y="17" text-anchor="middle" class="font-mono code-inline" fill="#818cf8">execution-mode</text>
+
+      <rect x="274" y="0" width="148" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="348" y="17" text-anchor="middle" class="font-mono code-inline" fill="#c084fc">pruned-edges-count</text>
+
+      <rect x="432" y="0" width="138" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="501" y="17" text-anchor="middle" class="font-mono code-inline" fill="#fbbf24">strategy.matrix</text>
+
+      <rect x="580" y="0" width="154" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="657" y="17" text-anchor="middle" class="font-mono code-inline" fill="#34d399">blast-radius-score</text>
+
+      <rect x="744" y="0" width="168" height="26" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1" />
+      <text x="828" y="17" text-anchor="middle" class="font-mono code-inline" fill="#6ee7b7">nemesis-target-files</text>
+
+      <rect x="922" y="0" width="68" height="26" rx="6" fill="#083344" stroke="#06b6d4" stroke-width="1" />
+      <text x="956" y="17" text-anchor="middle" class="font-mono code-inline" fill="#22d3ee">+9 more</text>
+    </g>
+  </g>
+</svg>
