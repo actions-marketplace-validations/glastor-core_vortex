@@ -82,7 +82,7 @@ inputs:
   post-pr-comment:
     description: "Post or update an idempotent sticky Pull Request comment when GITHUB_TOKEN is provided."
     required: false
-    default: "false"
+    default: "true"
   runner-cost-per-min:
     description: "Cloud runner cost per minute in USD for FinOps savings telemetry."
     required: false
