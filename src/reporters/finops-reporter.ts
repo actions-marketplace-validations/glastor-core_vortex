@@ -288,7 +288,13 @@ export function generateMarkdownSummary(result: VortexAnalysisResult): string {
 
   md.push(
     "---",
-    `*Generated in **${result.analysisDurationMs}ms** by [GLASTOR® Core — Vortex v${result.version}](https://github.com/glastor-core/vortex) • [glastor.es](https://glastor.es)*`,
+    `> ⚡ *Optimized in **${result.analysisDurationMs}ms** by [GLASTOR® Vortex](https://github.com/glastor-core/vortex) • ⭐ Star us on GitHub!*`,
+    "<details><summary>🏅 Embed Vortex badge in your README</summary>",
+    "",
+    "```markdown",
+    "[![Vortex Optimized](https://img.shields.io/badge/CI-Vortex%20Optimized-7928CA?style=flat&logo=fastlane)](https://github.com/glastor-core/vortex)",
+    "```",
+    "</details>",
   );
 
   return md.join("\n");
