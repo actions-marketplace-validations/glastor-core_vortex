@@ -9,6 +9,11 @@ vortex-report.json
 vortex-summary.md
 .vortex/cache/
 
+# Specter API Contract Reports
+.specter/
+specter-report.json
+specter-contract.sbom.json
+
 # Environment & Secrets
 .env
 .env.*

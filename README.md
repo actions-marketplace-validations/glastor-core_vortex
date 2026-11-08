@@ -3,6 +3,9 @@
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Vortex%20v1.1-7c3aed?logo=github&style=flat-square)](https://github.com/marketplace/actions/vortex-ast-predictive-ci-test-splitter)
 [![Deno 2](https://img.shields.io/badge/Deno-2.x-000000?logo=deno&style=flat-square)](https://deno.com)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0%20%28Supply--Chain%20Safe%29-10b981?style=flat-square)](#5-stage-architecture)
+[![API Contract: Specter](https://img.shields.io/badge/API%20Contract-Specter%20Guarded-9333ea?style=flat-square)](https://github.com/glastor-core/specter)
+[![DevSecOps: Nemesis](https://img.shields.io/badge/DevSecOps-Nemesis%20Audited-059669?style=flat-square)](https://github.com/glastor-core/nemesis)
+[![Docs: Zerho Engine](https://img.shields.io/badge/Docs-Zerho%20%2B%20llms.txt-8b5cf6?style=flat-square)](./docs/reference.md)
 [![Organization](https://img.shields.io/badge/GLASTOR%C2%AE%20Core-glastor.es-2563eb?style=flat-square)](https://glastor.es)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
 

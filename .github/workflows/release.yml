@@ -53,4 +53,3 @@ jobs:
               --title "Vortex $TAG_NAME" \
               --generate-notes
           fi
-
