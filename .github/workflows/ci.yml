@@ -1,4 +1,4 @@
-name: "Vortex CI — AST Impact, Lint, Type Check, Surgical Tests & Nemesis Audit"
+name: "Vortex CI — AST Impact, Lint, Type Check, Surgical Tests, Nemesis & Specter Audit"
 
 on:
   push:
@@ -95,3 +95,28 @@ jobs:
           generate-sbom: "true"
           scan-sast: "false"
           scan-sca: "false"
+
+  # 4. Companion Ecosystem Audit: glastor-core/specter AST API Contract & SemVer Gatekeeper
+  specter-contract-guard:
+    name: "👻 Specter AST API Contract & SemVer Gatekeeper"
+    needs: vortex-brain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout Repository (Full History for Base Ref Diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run GLASTOR® Core Specter API Contract Auditor
+        uses: glastor-core/specter@v1
+        with:
+          head-dir: "src"
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || 'HEAD~1' }}
+          fail-on-trojan: "true"
+          fail-on-breaking: "false"
+          output-json: "specter-report.json"
+          output-sbom: "specter-contract.sbom.json"
+          post-pr-comment: "true"

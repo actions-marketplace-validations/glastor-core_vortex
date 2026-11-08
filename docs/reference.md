@@ -1,0 +1,1410 @@
+---
+title: Vortex v1.1.0 — API Reference (Zerho Docgen)
+description: Automated TypeScript & AST Engine API Reference generated via glastor-core/zerho and deno doc
+layout: doc
+---
+
+# 🌪️ Vortex `v1.1.0` — Technical API Reference
+
+> Automatically compiled from source code AST & JSDoc signatures using **[GLASTOR® Core — Zerho](https://github.com/glastor-core/zerho)** (`deno doc --json`).
+
+---
+
+## Symbol Index
+
+- [**`runVortexAnalysis`**](#runvortexanalysis) (`function` in `src/main.ts`)
+- [**`ExecutionMode`**](#executionmode) (`typeAlias` in `src/types.ts`)
+- [**`SupportedLanguage`**](#supportedlanguage) (`typeAlias` in `src/types.ts`)
+- [**`DiffHunk`**](#diffhunk) (`interface` in `src/types.ts`)
+- [**`FileDiff`**](#filediff) (`interface` in `src/types.ts`)
+- [**`SymbolKind`**](#symbolkind) (`typeAlias` in `src/types.ts`)
+- [**`AstSymbol`**](#astsymbol) (`interface` in `src/types.ts`)
+- [**`ImportBinding`**](#importbinding) (`interface` in `src/types.ts`)
+- [**`ParsedModule`**](#parsedmodule) (`interface` in `src/types.ts`)
+- [**`MutatedSymbol`**](#mutatedsymbol) (`interface` in `src/types.ts`)
+- [**`PrunedDependencyEdge`**](#pruneddependencyedge) (`interface` in `src/types.ts`)
+- [**`ImpactedTest`**](#impactedtest) (`interface` in `src/types.ts`)
+- [**`TestShard`**](#testshard) (`interface` in `src/types.ts`)
+- [**`GitHubMatrixPayload`**](#githubmatrixpayload) (`interface` in `src/types.ts`)
+- [**`TestTelemetryRecord`**](#testtelemetryrecord) (`interface` in `src/types.ts`)
+- [**`TelemetryStore`**](#telemetrystore) (`interface` in `src/types.ts`)
+- [**`TestRunObservation`**](#testrunobservation) (`interface` in `src/types.ts`)
+- [**`GovernanceMetadata`**](#governancemetadata) (`interface` in `src/types.ts`)
+- [**`FinOpsMetrics`**](#finopsmetrics) (`interface` in `src/types.ts`)
+- [**`VortexAnalysisResult`**](#vortexanalysisresult) (`interface` in `src/types.ts`)
+- [**`VortexConfig`**](#vortexconfig) (`interface` in `src/types.ts`)
+- [**`VORTEX_VERSION`**](#vortex_version) (`variable` in `src/config.ts`)
+- [**`DEFAULT_CONFIG`**](#default_config) (`variable` in `src/config.ts`)
+- [**`parseSimpleYaml`**](#parsesimpleyaml) (`function` in `src/config.ts`)
+- [**`loadConfig`**](#loadconfig) (`function` in `src/config.ts`)
+- [**`MAX_AST_FILE_BYTES`**](#max_ast_file_bytes) (`variable` in `src/security.ts`)
+- [**`MAX_SCAN_LINE_LENGTH`**](#max_scan_line_length) (`variable` in `src/security.ts`)
+- [**`isSafeLineForRegex`**](#issafelineforregex) (`function` in `src/security.ts`)
+- [**`isValidGitRef`**](#isvalidgitref) (`function` in `src/security.ts`)
+- [**`isSafeRelativeFilePath`**](#issaferelativefilepath) (`function` in `src/security.ts`)
+- [**`resolveSafeWorkspacePath`**](#resolvesafeworkspacepath) (`function` in `src/security.ts`)
+- [**`escapeWorkflowCommandData`**](#escapeworkflowcommanddata) (`function` in `src/security.ts`)
+- [**`escapeWorkflowCommandProperty`**](#escapeworkflowcommandproperty) (`function` in `src/security.ts`)
+- [**`sanitizeGitHubOutputValue`**](#sanitizegithuboutputvalue) (`function` in `src/security.ts`)
+- [**`isSafeGitHubApiUrl`**](#issafegithubapiurl) (`function` in `src/security.ts`)
+- [**`isCommentOrBlankLine`**](#iscommentorblankline) (`function` in `src/git/diff-parser.ts`)
+- [**`evaluateHunkSemanticNoise`**](#evaluatehunksemanticnoise) (`function` in `src/git/diff-parser.ts`)
+- [**`parseUnifiedDiff`**](#parseunifieddiff) (`function` in `src/git/diff-parser.ts`)
+- [**`getWorkspaceGitDiff`**](#getworkspacegitdiff) (`function` in `src/git/diff-parser.ts`)
+- [**`globToRegExp`**](#globtoregexp) (`function` in `src/ast/analyzer.ts`)
+- [**`matchesAnyGlob`**](#matchesanyglob) (`function` in `src/ast/analyzer.ts`)
+- [**`detectLanguage`**](#detectlanguage) (`function` in `src/ast/analyzer.ts`)
+- [**`loadWorkspacePathAliases`**](#loadworkspacepathaliases) (`function` in `src/ast/analyzer.ts`)
+- [**`extractRawImportSpecifiers`**](#extractrawimportspecifiers) (`function` in `src/ast/analyzer.ts`)
+- [**`resolveWorkspaceImport`**](#resolveworkspaceimport) (`function` in `src/ast/analyzer.ts`)
+- [**`extractImportBindings`**](#extractimportbindings) (`function` in `src/ast/analyzer.ts`)
+- [**`extractAstSymbols`**](#extractastsymbols) (`function` in `src/ast/analyzer.ts`)
+- [**`countTestCases`**](#counttestcases) (`function` in `src/ast/analyzer.ts`)
+- [**`parseWorkspaceFile`**](#parseworkspacefile) (`function` in `src/ast/analyzer.ts`)
+- [**`expandIntraModuleMutatedSymbols`**](#expandintramodulemutatedsymbols) (`function` in `src/ast/analyzer.ts`)
+- [**`detectMutatedSymbols`**](#detectmutatedsymbols) (`function` in `src/ast/analyzer.ts`)
+- [**`scanWorkspaceFiles`**](#scanworkspacefiles) (`function` in `src/graph/dag.ts`)
+- [**`DependencyDag`**](#dependencydag) (`class` in `src/graph/dag.ts`)
+- [**`buildDagAndEvaluateImpact`**](#builddagandevaluateimpact) (`function` in `src/graph/dag.ts`)
+- [**`loadTelemetryStore`**](#loadtelemetrystore) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`saveTelemetryStore`**](#savetelemetrystore) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`parseTestReportObservations`**](#parsetestreportobservations) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`updateTelemetryStoreEwma`**](#updatetelemetrystoreewma) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`estimateTestDurationMs`**](#estimatetestdurationms) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`computeFailFastPriorityScore`**](#computefailfastpriorityscore) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`scheduleShardsLpt`**](#scheduleshardslpt) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`calculateFinOpsMetrics`**](#calculatefinopsmetrics) (`function` in `src/scheduler/lpt-splitter.ts`)
+- [**`extractTicketIds`**](#extractticketids) (`function` in `src/governance/gatekeeper.ts`)
+- [**`getGitContextStrings`**](#getgitcontextstrings) (`function` in `src/governance/gatekeeper.ts`)
+- [**`evaluateGovernance`**](#evaluategovernance) (`function` in `src/governance/gatekeeper.ts`)
+- [**`STICKY_COMMENT_MARKER`**](#sticky_comment_marker) (`variable` in `src/reporters/finops-reporter.ts`)
+- [**`formatDuration`**](#formatduration) (`function` in `src/reporters/finops-reporter.ts`)
+- [**`buildGitHubWorkflowAnnotations`**](#buildgithubworkflowannotations) (`function` in `src/reporters/finops-reporter.ts`)
+- [**`buildMermaidImpactGraph`**](#buildmermaidimpactgraph) (`function` in `src/reporters/finops-reporter.ts`)
+- [**`generateMarkdownSummary`**](#generatemarkdownsummary) (`function` in `src/reporters/finops-reporter.ts`)
+- [**`postOrUpdateStickyPrComment`**](#postorupdatestickyprcomment) (`function` in `src/reporters/finops-reporter.ts`)
+- [**`emitVortexReports`**](#emitvortexreports) (`function` in `src/reporters/finops-reporter.ts`)
+
+---
+
+## runVortexAnalysis
+
+**Kind:** `function` | **Module:** `src/main.ts:33`
+
+Executes the full Vortex AST Impact, Symbol-Level Barrel Pruning, LPT Fail-Fast Sharding,
+EWMA Telemetry Learning, and Governance Gatekeeper pipeline.
+
+```typescript
+function runVortexAnalysis(config: VortexConfig): VortexAnalysisResult;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `config` | `VortexConfig` | No | — | — |
+
+---
+
+## ExecutionMode
+
+**Kind:** `typeAlias` | **Module:** `src/types.ts:8`
+
+Execution strategy determined by Vortex impact analysis.
+
+---
+
+## SupportedLanguage
+
+**Kind:** `typeAlias` | **Module:** `src/types.ts:11`
+
+Supported programming languages for AST symbol & import analysis.
+
+---
+
+## DiffHunk
+
+**Kind:** `interface` | **Module:** `src/types.ts:20`
+
+Line-level modification range extracted from `git diff --unified=0`.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `startLine` | `number` | No | Starting line number in the new/head file (1-indexed). |
+| `lineCount` | `number` | No | Number of lines in the new/head hunk. |
+| `endLine` | `number` | No | Ending line number in the new/head file (inclusive, 1-indexed). |
+| `addedLines` | `string[]` | No | Raw added lines in this hunk (without leading `+`). |
+| `removedLines` | `string[]` | No | Raw removed lines in this hunk (without leading `-`). |
+| `isSemanticNoise` | `boolean` | No | True if the hunk only modifies comments, whitespace, or blank lines. |
+
+---
+
+## FileDiff
+
+**Kind:** `interface` | **Module:** `src/types.ts:36`
+
+Diff summary for a single repository file.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `filePath` | `string` | No | Normalized POSIX relative path from workspace root (e.g., `src/graph/dag.ts`). |
+| `status` | `A \| M \| D \| R` | No | Change status (`A` added, `M` modified, `D` deleted, `R` renamed). |
+| `hunks` | `DiffHunk[]` | No | Individual line-range hunks modified in the file. |
+| `isCommentOrFormatOnly` | `boolean` | No | True if all hunks in this file are non-functional noise (comments/formatting). |
+
+---
+
+## SymbolKind
+
+**Kind:** `typeAlias` | **Module:** `src/types.ts:48`
+
+Kind of top-level AST symbol declaration.
+
+---
+
+## AstSymbol
+
+**Kind:** `interface` | **Module:** `src/types.ts:60`
+
+Top-level AST declaration boundary inside a source module.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `name` | `string` | No | Identifier name of the symbol. |
+| `kind` | `SymbolKind` | No | Symbol category. |
+| `isExported` | `boolean` | No | Whether the symbol is exported/public across modules. |
+| `isTypeOnly` | `boolean` | No | Whether the symbol only exists at compile-time (`interface` / `type`). |
+| `startLine` | `number` | No | Starting line number (1-indexed). |
+| `endLine` | `number` | No | Ending line number (1-indexed, inclusive). |
+| `referencedIdentifiers` | `string[]` | Yes | Other top-level symbols or imported identifiers referenced inside this declaration's body. |
+
+---
+
+## ImportBinding
+
+**Kind:** `interface` | **Module:** `src/types.ts:78`
+
+Fine-grained symbol-level import binding (`import { fnA, fnB } from "./utils.ts"`).
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `rawSpecifier` | `string` | No | Raw module specifier as written in source code (`./utils.ts`, `@core/db`). |
+| `resolvedFilePath` | `string` | No | Resolved POSIX workspace file path (`src/utils.ts`). |
+| `importedSymbols` | `string[]` | No | Specific exported symbol names imported, or `["*"]` for namespace/default/side-effect imports. |
+| `isReExport` | `boolean` | No | True if this is a re-export (`export { fnA } from "./utils.ts"` or `export * from "./utils.ts"`). |
+
+---
+
+## ParsedModule
+
+**Kind:** `interface` | **Module:** `src/types.ts:90`
+
+Parsed AST representation for a single file in the workspace.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `filePath` | `string` | No | Normalized POSIX relative path. |
+| `language` | `SupportedLanguage` | No | Detected source language. |
+| `isTestFile` | `boolean` | No | Whether this file is a test suite (`*.test.ts`, `*.spec.ts`, etc.). |
+| `imports` | `string[]` | No | Resolved POSIX relative paths of workspace modules imported by this file. |
+| `importBindings` | `ImportBinding[]` | Yes | Fine-grained symbol-level import bindings for barrel-file pruning. |
+| `symbols` | `AstSymbol[]` | No | Top-level declared symbols with exact line ranges. |
+| `lineCount` | `number` | No | Approximate line count of the module. |
+| `testCaseCount` | `number` | No | Number of test cases (`Deno.test`, `it(`, `test(`, `def test_`, `#[test]`) found. |
+
+---
+
+## MutatedSymbol
+
+**Kind:** `interface` | **Module:** `src/types.ts:110`
+
+Mutated symbol detected by intersecting Git Diff Hunks with AST Symbol boundaries.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `filePath` | `string` | No | File where the symbol resides. |
+| `symbolName` | `string` | No | Name of the mutated symbol (`<module-scope>` if top-level side-effect). |
+| `kind` | `SymbolKind \| module-scope` | No | Symbol category. |
+| `isTypeOnly` | `boolean` | No | True if only compile-time types were touched. |
+| `lineRange` | `unknown` | No | Line range of the symbol. |
+
+---
+
+## PrunedDependencyEdge
+
+**Kind:** `interface` | **Module:** `src/types.ts:124`
+
+Dependency edge pruned by Symbol-Level AST Barrel Pruning.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `fromFile` | `string` | No | Modified dependency file (`src/utils.ts`). |
+| `toFile` | `string` | No | Consumer file that imports `fromFile` (`tests/payment.test.ts`). |
+| `importedSymbols` | `string[]` | No | Symbols imported by `toFile` (`["fnB"]`). |
+| `mutatedSymbolsInSource` | `string[]` | No | Symbols actually mutated in `fromFile` (`["fnA"]`). |
+
+---
+
+## ImpactedTest
+
+**Kind:** `interface` | **Module:** `src/types.ts:136`
+
+Impacted test file with its shortest dependency chain from the mutated source.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `testFile` | `string` | No | Normalized POSIX path of the test file. |
+| `impactChain` | `string[]` | No | Dependency path from modified file to this test (`["src/a.ts", "src/b.ts", "tests/b.test.ts"]`). |
+| `depth` | `number` | No | Hop distance in the Reverse Dependency DAG (`0` if the test itself was modified). |
+| `estimatedDurationMs` | `number` | No | Estimated or historical execution time in milliseconds. |
+| `flakinessScore` | `number` | No | Historical flakiness score between `0.0` (stable) and `1.0` (highly flaky). |
+| `quarantined` | `boolean` | No | Whether this test was quarantined due to exceeding the flakiness threshold. |
+| `failFastPriorityScore` | `number` | Yes | Computed Fail-Fast priority score (higher runs earlier inside its assigned shard). |
+
+---
+
+## TestShard
+
+**Kind:** `interface` | **Module:** `src/types.ts:154`
+
+Single parallel execution shard generated by the LPT Bin-Packing Scheduler.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `shard_id` | `number` | No | 1-indexed shard identifier (`1` .. `N`). |
+| `shard_total` | `number` | No | Total number of active shards in the current matrix (`N`). |
+| `test_files` | `string` | No | Space-separated list of test file paths ordered by Fail-Fast priority (`deno test ${{ matrix.test_files }}`). |
+| `files` | `string[]` | No | Array of test file paths assigned to this shard (ordered by Fail-Fast priority). |
+| `estimated_ms` | `number` | No | Total estimated execution time for this shard in milliseconds. |
+
+---
+
+## GitHubMatrixPayload
+
+**Kind:** `interface` | **Module:** `src/types.ts:168`
+
+GitHub Actions dynamic matrix payload (`strategy.matrix`).
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `include` | `TestShard[]` | No | — |
+
+---
+
+## TestTelemetryRecord
+
+**Kind:** `interface` | **Module:** `src/types.ts:173`
+
+Historical telemetry entry for a single test file stored in `.vortex/telemetry.json`.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `durationMs` | `number` | No | Average execution time in milliseconds (EWMA). |
+| `flakinessRate` | `number` | No | Flakiness rate (`0.0` to `1.0`) observed across recent runs (EWMA). |
+| `runsCount` | `number` | Yes | Total number of recorded executions. |
+| `lastUpdated` | `string` | Yes | ISO-8601 timestamp of last recorded run. |
+
+---
+
+## TelemetryStore
+
+**Kind:** `interface` | **Module:** `src/types.ts:185`
+
+Historical telemetry file structure.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `version` | `string` | No | — |
+| `tests` | `Record<string, TestTelemetryRecord>` | No | — |
+
+---
+
+## TestRunObservation
+
+**Kind:** `interface` | **Module:** `src/types.ts:191`
+
+Single test execution observation used to update EWMA telemetry.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `testFile` | `string` | No | Normalized POSIX path of the test file. |
+| `durationMs` | `number` | No | Observed execution time in milliseconds. |
+| `passed` | `boolean` | No | Whether the test passed without retries. |
+| `flakyOrRetried` | `boolean` | Yes | True if the test failed initially and passed on retry (or exhibited flaky behavior). |
+
+---
+
+## GovernanceMetadata
+
+**Kind:** `interface` | **Module:** `src/types.ts:203`
+
+Governance, Ticket Traceability & DevSecOps Gatekeeper metadata.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `detectedTicketIds` | `string[]` | No | Extracted Jira / Linear / GitHub Issue identifiers (e.g. `["GLS-402", "PROJ-101"]`). |
+| `maxBlastRadiusScore` | `number` | No | Configured maximum allowed blast-radius score (`0` - `100`). |
+| `blastRadiusPassed` | `boolean` | No | Whether the blast radius is within the allowed threshold. |
+| `nemesisTargetFiles` | `string[]` | No | Space-separated list of modified and transitively impacted source files for `glastor-core/nemesis`. |
+
+---
+
+## FinOpsMetrics
+
+**Kind:** `interface` | **Module:** `src/types.ts:215`
+
+FinOps and Green-CI efficiency metrics calculated for the current run.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `totalTestsInRepo` | `number` | No | Total test files discovered in the workspace. |
+| `selectedTestsCount` | `number` | No | Number of test files selected for execution. |
+| `skippedTestsCount` | `number` | No | Number of unaffected test files safely skipped. |
+| `quarantinedTestsCount` | `number` | No | Number of flaky test files isolated in quarantine. |
+| `prunedBarrelEdgesCount` | `number` | No | Number of false-positive dependency edges eliminated via Symbol-Level Barrel Pruning. |
+| `baselineDurationMs` | `number` | No | Estimated full-suite sequential duration in milliseconds. |
+| `optimizedMakespanMs` | `number` | No | Estimated parallel makespan (slowest shard duration) in milliseconds. |
+| `timeSavedMs` | `number` | No | Total runner compute time saved in milliseconds. |
+| `timeReductionPercent` | `number` | No | Percentage of CI execution wall-clock time saved (`0` - `100`). |
+| `estimatedCostSavedUsd` | `number` | No | Estimated cloud CI cost saved per run in USD (based on runner cost/min). |
+| `estimatedCo2SavedGrams` | `number` | No | Estimated carbon footprint saved in grams of CO2e. |
+| `blastRadiusScore` | `number` | No | Blast-radius severity score (`0` - `100`). |
+
+---
+
+## VortexAnalysisResult
+
+**Kind:** `interface` | **Module:** `src/types.ts:243`
+
+Complete output produced by the Vortex Engine.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `version` | `string` | No | Engine semantic version. |
+| `timestamp` | `string` | No | Timestamp of analysis. |
+| `analysisDurationMs` | `number` | No | Analysis execution wall-clock time in milliseconds. |
+| `baseRef` | `string` | No | Base Git ref compared against. |
+| `headRef` | `string` | No | Head Git ref analyzed. |
+| `executionMode` | `ExecutionMode` | No | Chosen execution strategy. |
+| `modeReason` | `string` | No | Reason explaining why this execution mode was selected. |
+| `shouldRun` | `boolean` | No | Whether downstream CI test jobs should execute (`true` or `false`). |
+| `changedFiles` | `FileDiff[]` | No | Files modified in the Git diff. |
+| `triggeredFailSafeFiles` | `string[]` | No | Global fail-safe files that triggered a full suite run (if any). |
+| `mutatedSymbols` | `MutatedSymbol[]` | No | AST symbols mutated by the diff. |
+| `prunedEdges` | `PrunedDependencyEdge[]` | No | Dependency edges pruned by Symbol-Level AST Barrel Pruning. |
+| `impactedTests` | `ImpactedTest[]` | No | Impacted test files discovered via Reverse DAG reachability. |
+| `quarantinedTests` | `ImpactedTest[]` | No | Quarantined flaky test files. |
+| `shards` | `TestShard[]` | No | LPT-balanced parallel shards for GitHub Actions matrix. |
+| `matrix` | `GitHubMatrixPayload` | No | Ready-to-use GitHub Actions `strategy.matrix` object. |
+| `finops` | `FinOpsMetrics` | No | FinOps and compute savings metrics. |
+| `governance` | `GovernanceMetadata` | No | Governance, ticket traceability, and `nemesis` DevSecOps bridge data. |
+
+---
+
+## VortexConfig
+
+**Kind:** `interface` | **Module:** `src/types.ts:283`
+
+Runtime configuration for Vortex.
+
+### Properties
+
+| Property | Type | Optional | Description |
+| :--- | :--- | :---: | :--- |
+| `workspaceDir` | `string` | No | Workspace root directory. |
+| `baseRef` | `string` | No | Base Git revision or branch (`origin/main`, `HEAD~1`, etc.). |
+| `headRef` | `string` | No | Head Git revision (`HEAD`). |
+| `shards` | `number` | No | Maximum number of parallel shards to generate (`1` - `64`). |
+| `testGlobs` | `string[]` | No | Glob patterns identifying test files. |
+| `failSafeGlobs` | `string[]` | No | Glob patterns that force full test suite execution when modified. |
+| `ignoreDirs` | `string[]` | No | Directory names to ignore when scanning workspace AST. |
+| `telemetryPath` | `string` | No | Path to historical test timing telemetry JSON file. |
+| `updateTelemetryFromReport` | `string` | Yes | Optional path to a JUnit XML or JSON test report to ingest via EWMA telemetry learning. |
+| `ewmaAlpha` | `number` | No | EWMA smoothing factor alpha (`0.05` - `0.95`, default `0.3`). |
+| `flakyQuarantine` | `boolean` | No | Whether to quarantine tests exceeding `flakyThreshold`. |
+| `flakyThreshold` | `number` | No | Flakiness score threshold (`0.0` - `1.0`) above which a test is quarantined. |
+| `ignoreTypeOnlyChanges` | `boolean` | No | Whether type-only AST edits (`interface` / `type`) should be ignored for runtime test execution. |
+| `symbolLevelPruning` | `boolean` | No | Enable Symbol-Level AST Barrel Pruning (`import { fnB }` vs mutated `fnA`). |
+| `maxBlastRadius` | `number` | No | Maximum allowed blast-radius score (`0` - `100`) before Gatekeeper flags/blocks. |
+| `failOnBlastRadius` | `boolean` | No | Fail with exit code 1 if blast radius exceeds `maxBlastRadius`. |
+| `ticketContext` | `string` | Yes | Optional explicit ticket/issue IDs or branch name for traceability. |
+| `emitAnnotations` | `boolean` | No | Emit native GitHub Actions workflow annotations (`::notice`, `::warning`, `::error`). |
+| `postPrComment` | `boolean` | No | Post or update an idempotent sticky PR comment when `GITHUB_TOKEN` is available. |
+| `runnerCostPerMinUsd` | `number` | No | Runner cost in USD per minute for FinOps calculations. |
+| `reportFile` | `string` | No | Path to export full JSON report. |
+| `writeSummary` | `boolean` | No | Whether to write summary to `$GITHUB_STEP_SUMMARY`. |
+| `rawDiffOverride` | `string` | Yes | Optional raw unified diff string (used for unit testing or piped diffs). |
+
+---
+
+## VORTEX_VERSION
+
+**Kind:** `variable` | **Module:** `src/config.ts:12`
+
+Exported symbol in Vortex core engine.
+
+---
+
+## DEFAULT_CONFIG
+
+**Kind:** `variable` | **Module:** `src/config.ts:14`
+
+Exported symbol in Vortex core engine.
+
+---
+
+## parseSimpleYaml
+
+**Kind:** `function` | **Module:** `src/config.ts:73`
+
+Lightweight zero-dependency YAML parser for `.vortex.yml` configuration files.
+Supports key-value scalars, booleans, numbers, inline arrays (`[a, b]`), and block lists (`- item`).
+
+```typescript
+function parseSimpleYaml(content: string): Record<string, unknown>;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `content` | `string` | No | — | — |
+
+---
+
+## loadConfig
+
+**Kind:** `function` | **Module:** `src/config.ts:157`
+
+Loads and merges Vortex configuration from defaults, `.vortex.yml`, GitHub Action `INPUT_*` env vars, and CLI flags.
+
+```typescript
+function loadConfig(cliArgs = [Deno.args]): unknown;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `cliArgs` | `string[]` | Yes | `[Deno.args]` | — |
+
+---
+
+## MAX_AST_FILE_BYTES
+
+**Kind:** `variable` | **Module:** `src/security.ts:14`
+
+Maximum file size in bytes (1 MB) parsed by the AST scanner to prevent CWE-1333 / memory exhaustion.
+
+---
+
+## MAX_SCAN_LINE_LENGTH
+
+**Kind:** `variable` | **Module:** `src/security.ts:17`
+
+Maximum single-line character length (2000 chars) scanned by regexes to block minified bundle ReDoS (CWE-1333).
+
+---
+
+## isSafeLineForRegex
+
+**Kind:** `function` | **Module:** `src/security.ts:22`
+
+Checks whether a source line or file exceeds safe AST scanning thresholds (minified bundles / CWE-1333 guard).
+
+```typescript
+function isSafeLineForRegex(line: string): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `line` | `string` | No | — | — |
+
+---
+
+## isValidGitRef
+
+**Kind:** `function` | **Module:** `src/security.ts:30`
+
+Validates a Git revision reference (`base-ref` / `head-ref`) to prevent CWE-88 Argument Injection.
+Rejects strings starting with `-`, containing whitespace, control characters, or shell metacharacters.
+
+```typescript
+function isValidGitRef(ref: string): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `ref` | `string` | No | — | — |
+
+---
+
+## isSafeRelativeFilePath
+
+**Kind:** `function` | **Module:** `src/security.ts:46`
+
+Validates that a relative file path from the repository contains no traversal (`..`),
+null bytes, control characters, or shell metacharacters.
+
+```typescript
+function isSafeRelativeFilePath(relPath: string): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `relPath` | `string` | No | — | — |
+
+---
+
+## resolveSafeWorkspacePath
+
+**Kind:** `function` | **Module:** `src/security.ts:62`
+
+Resolves a target path against `workspaceDir` and strictly verifies that the resolved path
+remains lexically contained inside `workspaceDir` (prevents CWE-22 Arbitrary File Read/Write).
+
+```typescript
+function resolveSafeWorkspacePath(workspaceDir: string, targetPath: string): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `targetPath` | `string` | No | — | — |
+
+---
+
+## escapeWorkflowCommandData
+
+**Kind:** `function` | **Module:** `src/security.ts:79`
+
+Escapes message data for GitHub Actions Workflow Commands (`::notice`, `::warning`, `::error`)
+per official GitHub runner specification (`%` -> `%25`, `\r` -> `%0D`, `\n` -> `%0A`).
+
+```typescript
+function escapeWorkflowCommandData(val: string): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `val` | `string` | No | — | — |
+
+---
+
+## escapeWorkflowCommandProperty
+
+**Kind:** `function` | **Module:** `src/security.ts:90`
+
+Escapes property values (`file=...`, `title=...`) inside GitHub Actions Workflow Commands
+per official GitHub runner specification (`%`, `\r`, `\n`, `:`, `,`).
+
+```typescript
+function escapeWorkflowCommandProperty(val: string): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `val` | `string` | No | — | — |
+
+---
+
+## sanitizeGitHubOutputValue
+
+**Kind:** `function` | **Module:** `src/security.ts:103`
+
+Sanitizes a single-line value before writing `key=value` to `$GITHUB_OUTPUT`
+to prevent CWE-93 newline output injection.
+
+```typescript
+function sanitizeGitHubOutputValue(val: string | number | boolean): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `val` | `string \| number \| boolean` | No | — | — |
+
+---
+
+## isSafeGitHubApiUrl
+
+**Kind:** `function` | **Module:** `src/security.ts:110`
+
+Validates that a GitHub API base URL uses HTTPS (or localhost in tests) to prevent CWE-918 SSRF / credential leakage.
+
+```typescript
+function isSafeGitHubApiUrl(rawUrl: string): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `rawUrl` | `string` | No | — | — |
+
+---
+
+## isCommentOrBlankLine
+
+**Kind:** `function` | **Module:** `src/git/diff-parser.ts:14`
+
+Checks whether a single code line is purely blank or a single-line comment across TS/JS/Py/Rust/Go.
+
+```typescript
+function isCommentOrBlankLine(line: string): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `line` | `string` | No | — | — |
+
+---
+
+## evaluateHunkSemanticNoise
+
+**Kind:** `function` | **Module:** `src/git/diff-parser.ts:33`
+
+Evaluates whether a diff hunk only touches comments, whitespace, or formatting without changing logic.
+
+```typescript
+function evaluateHunkSemanticNoise(addedLines: string[], removedLines: string[]): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `addedLines` | `string[]` | No | — | — |
+| `removedLines` | `string[]` | No | — | — |
+
+---
+
+## parseUnifiedDiff
+
+**Kind:** `function` | **Module:** `src/git/diff-parser.ts:61`
+
+Parses a raw unified diff output (`git diff --unified=0`) into structured `FileDiff` entries.
+
+```typescript
+function parseUnifiedDiff(rawDiff: string): FileDiff[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `rawDiff` | `string` | No | — | — |
+
+---
+
+## getWorkspaceGitDiff
+
+**Kind:** `function` | **Module:** `src/git/diff-parser.ts:175`
+
+Executes `git diff --unified=0` in the target workspace to obtain line-level hunks.
+Gracefully falls back to working-tree diff or `git status --porcelain` if the repo has a single commit.
+
+```typescript
+function getWorkspaceGitDiff(workspaceDir: string, baseRef: string, headRef: string): FileDiff[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `baseRef` | `string` | No | — | — |
+| `headRef` | `string` | No | — | — |
+
+---
+
+## globToRegExp
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:25`
+
+Converts a POSIX glob pattern (e.g., `*.test.ts` or `.github/workflows/**`) into a RegExp.
+
+```typescript
+function globToRegExp(glob: string): RegExp;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `glob` | `string` | No | — | — |
+
+---
+
+## matchesAnyGlob
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:65`
+
+Checks if a normalized POSIX relative path matches any of the provided glob patterns.
+
+```typescript
+function matchesAnyGlob(relPath: string, globs: string[]): boolean;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `relPath` | `string` | No | — | — |
+| `globs` | `string[]` | No | — | — |
+
+---
+
+## detectLanguage
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:73`
+
+Detects language from file extension.
+
+```typescript
+function detectLanguage(filePath: string): SupportedLanguage;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `filePath` | `string` | No | — | — |
+
+---
+
+## loadWorkspacePathAliases
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:87`
+
+Loads path aliases and workspace package mappings from `deno.json`, `tsconfig.json`, and `package.json`.
+Returns a map of alias prefix/key -> target relative POSIX path prefix.
+
+```typescript
+function loadWorkspacePathAliases(workspaceDir: string): Map<string, string>;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+
+---
+
+## extractRawImportSpecifiers
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:149`
+
+Extracts raw module import specifiers from source code across TS/JS, Python, Rust, and Go.
+
+```typescript
+function extractRawImportSpecifiers(content: string, language: SupportedLanguage): string[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `content` | `string` | No | — | — |
+| `language` | `SupportedLanguage` | No | — | — |
+
+---
+
+## resolveWorkspaceImport
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:190`
+
+Resolves a raw import specifier against the importing file's directory, monorepo path aliases,
+and known workspace files.
+
+```typescript
+function resolveWorkspaceImport(importerRelPath: string, specifier: string, knownFiles: Set<string>, pathAliases?: Map<string, string>): string | null;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `importerRelPath` | `string` | No | — | — |
+| `specifier` | `string` | No | — | — |
+| `knownFiles` | `Set<string>` | No | — | — |
+| `pathAliases` | `Map<string, string>` | Yes | — | — |
+
+---
+
+## extractImportBindings
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:258`
+
+Extracts fine-grained symbol-level import bindings (`import { fnA, fnB as x } from "./utils.ts"`)
+to enable Symbol-Level AST Barrel Pruning.
+
+```typescript
+function extractImportBindings(content: string, language: SupportedLanguage, importerRelPath: string, knownFiles: Set<string>, pathAliases?: Map<string, string>): ImportBinding[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `content` | `string` | No | — | — |
+| `language` | `SupportedLanguage` | No | — | — |
+| `importerRelPath` | `string` | No | — | — |
+| `knownFiles` | `Set<string>` | No | — | — |
+| `pathAliases` | `Map<string, string>` | Yes | — | — |
+
+---
+
+## extractAstSymbols
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:351`
+
+Extracts top-level AST declarations (functions, classes, constants, interfaces, types, enums)
+with exact `[startLine, endLine]` boundaries and intra-module referenced identifiers.
+
+```typescript
+function extractAstSymbols(content: string, language: SupportedLanguage): AstSymbol[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `content` | `string` | No | — | — |
+| `language` | `SupportedLanguage` | No | — | — |
+
+---
+
+## countTestCases
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:517`
+
+Counts how many test declarations exist inside a test file (`Deno.test`, `it(`, `test(`, `def test_`, `#[test]`).
+
+```typescript
+function countTestCases(content: string): number;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `content` | `string` | No | — | — |
+
+---
+
+## parseWorkspaceFile
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:527`
+
+Parses a workspace file into a `ParsedModule`.
+
+```typescript
+function parseWorkspaceFile(workspaceDir: string, relPath: string, testGlobs: string[], knownFiles: Set<string>, pathAliases?: Map<string, string>): ParsedModule;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `relPath` | `string` | No | — | — |
+| `testGlobs` | `string[]` | No | — | — |
+| `knownFiles` | `Set<string>` | No | — | — |
+| `pathAliases` | `Map<string, string>` | Yes | — | — |
+
+---
+
+## expandIntraModuleMutatedSymbols
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:600`
+
+Expands mutated symbols within the same file using intra-module call references:
+if `fnA` was mutated and `fnB` calls `fnA` inside the same file, `fnB` is also transitively mutated.
+
+```typescript
+function expandIntraModuleMutatedSymbols(directMutated: MutatedSymbol[], moduleAst: ParsedModule | undefined): MutatedSymbol[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `directMutated` | `MutatedSymbol[]` | No | — | — |
+| `moduleAst` | `ParsedModule \| undefined` | No | — | — |
+
+---
+
+## detectMutatedSymbols
+
+**Kind:** `function` | **Module:** `src/ast/analyzer.ts:644`
+
+Intersects modified line-range hunks (`FileDiff`) with the file's AST symbols (`ParsedModule`)
+to determine exactly which functions, classes, or types were mutated, including intra-module callers.
+
+```typescript
+function detectMutatedSymbols(fileDiff: FileDiff, moduleAst: ParsedModule | undefined): MutatedSymbol[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `fileDiff` | `FileDiff` | No | — | — |
+| `moduleAst` | `ParsedModule \| undefined` | No | — | — |
+
+---
+
+## scanWorkspaceFiles
+
+**Kind:** `function` | **Module:** `src/graph/dag.ts:22`
+
+Recursively scans the workspace directory for all source and test files, excluding `ignoreDirs`.
+
+```typescript
+function scanWorkspaceFiles(workspaceDir: string, ignoreDirs: string[]): string[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `ignoreDirs` | `string[]` | No | — | — |
+
+---
+
+## DependencyDag
+
+**Kind:** `class` | **Module:** `src/graph/dag.ts:53`
+
+Directed Dependency Graph storing both forward (`A imports B`) and reverse (`B is imported by A`) edges,
+with support for fine-grained Symbol-Level AST Barrel Pruning.
+
+### Methods
+
+#### `addModule(mod: ParsedModule): void`
+
+Registers a parsed module and indexes its import edges.
+
+#### `getModule(filePath: string): ParsedModule | undefined`
+
+#### `getAllModules(): ParsedModule[]`
+
+#### `getAllTestModules(): ParsedModule[]`
+
+#### `getDirectDependents(filePath: string): string[]`
+
+#### `findImpactedTests(seedFiles: string[], options?: unknown): Map<string, unknown>`
+
+Executes Breadth-First Search (BFS) from a set of seed modified files across the Reverse DAG
+to find all transitively impacted test files, applying Symbol-Level AST Barrel Pruning when enabled.
+
+#### `findImpactedTestsWithPruning(seedFiles: string[], options?: unknown): unknown`
+
+Full BFS reachability returning impacted tests, all impacted source files, and pruned barrel edges.
+
+---
+
+## buildDagAndEvaluateImpact
+
+**Kind:** `function` | **Module:** `src/graph/dag.ts:259`
+
+Builds the workspace Reverse Dependency DAG and evaluates the blast radius of a Git diff.
+
+```typescript
+function buildDagAndEvaluateImpact(params: unknown): unknown;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `params` | `unknown` | No | — | — |
+
+---
+
+## loadTelemetryStore
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:25`
+
+Loads historical test timing and flakiness telemetry from `.vortex/telemetry.json` if present.
+
+```typescript
+function loadTelemetryStore(workspaceDir: string, telemetryPath: string): TelemetryStore;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `telemetryPath` | `string` | No | — | — |
+
+---
+
+## saveTelemetryStore
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:44`
+
+Persists the updated EWMA telemetry store to `.vortex/telemetry.json`.
+
+```typescript
+function saveTelemetryStore(workspaceDir: string, telemetryPath: string, store: TelemetryStore): void;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+| `telemetryPath` | `string` | No | — | — |
+| `store` | `TelemetryStore` | No | — | — |
+
+---
+
+## parseTestReportObservations
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:61`
+
+Parses test run observations from either a JSON report or a JUnit XML report.
+
+```typescript
+function parseTestReportObservations(rawContent: string): TestRunObservation[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `rawContent` | `string` | No | — | — |
+
+---
+
+## updateTelemetryStoreEwma
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:137`
+
+Updates the historical telemetry store using an Exponentially Weighted Moving Average (EWMA):
+$T_{\text{new}} = \alpha \cdot T_{\text{obs}} + (1 - \alpha) \cdot T_{\text{prev}}$
+$F_{\text{new}} = \alpha \cdot S_{\text{flaky}} + (1 - \alpha) \cdot F_{\text{prev}}$
+
+```typescript
+function updateTelemetryStoreEwma(store: TelemetryStore, observations: TestRunObservation[], alpha = 0.3): TelemetryStore;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `store` | `TelemetryStore` | No | — | — |
+| `observations` | `TestRunObservation[]` | No | — | — |
+| `alpha` | `number` | Yes | `0.3` | — |
+
+---
+
+## estimateTestDurationMs
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:186`
+
+Estimates the execution time of a test file in milliseconds when historical telemetry is absent,
+based on AST test case count (`Deno.test` / `it`) and line count.
+
+```typescript
+function estimateTestDurationMs(mod: ParsedModule | undefined, telemetry: TestTelemetryRecord | undefined): number;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `mod` | `ParsedModule \| undefined` | No | — | — |
+| `telemetry` | `TestTelemetryRecord \| undefined` | No | — | — |
+
+---
+
+## computeFailFastPriorityScore
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:204`
+
+Computes a Predictive Fail-Fast Priority Score for ordering tests *within* a shard.
+Higher score runs first:
+- Direct hop distance (`depth === 0` or `1`) gets highest priority (+1000 / (depth + 1))
+- Recent non-quarantined instability gets +200 * flakinessScore
+- Faster unit tests run before slower integration tests (+100 / (1 + durationSec))
+
+```typescript
+function computeFailFastPriorityScore(test: ImpactedTest): number;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `test` | `ImpactedTest` | No | — | — |
+
+---
+
+## scheduleShardsLpt
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:215`
+
+Greedy Longest Processing Time (LPT) Multi-Way Number Partitioning algorithm
+combined with Predictive Fail-Fast Intra-Shard Ordering.
+
+```typescript
+function scheduleShardsLpt(executableTests: ImpactedTest[], maxShards: number): unknown;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `executableTests` | `ImpactedTest[]` | No | — | — |
+| `maxShards` | `number` | No | — | — |
+
+---
+
+## calculateFinOpsMetrics
+
+**Kind:** `function` | **Module:** `src/scheduler/lpt-splitter.ts:292`
+
+Calculates FinOps, Green-CI carbon reduction, and Blast-Radius scores.
+
+```typescript
+function calculateFinOpsMetrics(params: unknown): FinOpsMetrics;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `params` | `unknown` | No | — | — |
+
+---
+
+## extractTicketIds
+
+**Kind:** `function` | **Module:** `src/governance/gatekeeper.ts:14`
+
+Extracts Jira/Linear style keys (`GLS-402`, `PROJ-123`) and GitHub issue references (`GH-88`, `#42`)
+from branch names, commit messages, PR titles, or explicit context strings.
+
+```typescript
+function extractTicketIds(sources: Array<string | undefined>): string[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `sources` | `Array<string \| undefined>` | No | — | — |
+
+---
+
+## getGitContextStrings
+
+**Kind:** `function` | **Module:** `src/governance/gatekeeper.ts:46`
+
+Reads current Git branch name and latest commit subject from the workspace when available.
+
+```typescript
+function getGitContextStrings(workspaceDir: string): string[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `workspaceDir` | `string` | No | — | — |
+
+---
+
+## evaluateGovernance
+
+**Kind:** `function` | **Module:** `src/governance/gatekeeper.ts:89`
+
+Evaluates Governance metadata: Ticket traceability, Blast-Radius Gatekeeper pass/fail,
+and `glastor-core/nemesis` DevSecOps target files.
+
+```typescript
+function evaluateGovernance(params: unknown): GovernanceMetadata;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `params` | `unknown` | No | — | — |
+
+---
+
+## STICKY_COMMENT_MARKER
+
+**Kind:** `variable` | **Module:** `src/reporters/finops-reporter.ts:20`
+
+Exported symbol in Vortex core engine.
+
+---
+
+## formatDuration
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:25`
+
+Formats milliseconds into human-readable duration (`1.42s`, `340ms`).
+
+```typescript
+function formatDuration(ms: number): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `ms` | `number` | No | — | — |
+
+---
+
+## buildGitHubWorkflowAnnotations
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:38`
+
+Generates native GitHub Actions Workflow Command annotations (`::notice`, `::warning`, `::error`)
+that render inline inside the Pull Request "Files changed" tab and Check summary.
+
+```typescript
+function buildGitHubWorkflowAnnotations(result: VortexAnalysisResult): string[];
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `result` | `VortexAnalysisResult` | No | — | — |
+
+---
+
+## buildMermaidImpactGraph
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:100`
+
+Generates a Mermaid flowchart (`flowchart LR`) visualizing the AST Blast-Radius DAG.
+
+```typescript
+function buildMermaidImpactGraph(result: VortexAnalysisResult): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `result` | `VortexAnalysisResult` | No | — | — |
+
+---
+
+## generateMarkdownSummary
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:172`
+
+Generates the Markdown report for `$GITHUB_STEP_SUMMARY` and PR comments.
+
+```typescript
+function generateMarkdownSummary(result: VortexAnalysisResult): string;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `result` | `VortexAnalysisResult` | No | — | — |
+
+---
+
+## postOrUpdateStickyPrComment
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:300`
+
+Posts or updates an idempotent sticky Pull Request comment on GitHub when `GITHUB_TOKEN`
+and PR context (`GITHUB_EVENT_PATH`) are available.
+
+```typescript
+function postOrUpdateStickyPrComment(summaryMarkdown: string): Promise<boolean>;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `summaryMarkdown` | `string` | No | — | — |
+
+---
+
+## emitVortexReports
+
+**Kind:** `function` | **Module:** `src/reporters/finops-reporter.ts:372`
+
+Writes analysis outputs to `$GITHUB_OUTPUT`, `$GITHUB_STEP_SUMMARY`, workflow annotations, and the JSON report file.
+
+```typescript
+function emitVortexReports(result: VortexAnalysisResult, workspaceDir: string, reportFile: string, writeSummary: boolean, emitAnnotations = false): unknown;
+```
+
+### Parameters
+
+| Parameter | Type | Optional | Default | Description |
+| :--- | :--- | :---: | :---: | :--- |
+| `result` | `VortexAnalysisResult` | No | — | — |
+| `workspaceDir` | `string` | No | — | — |
+| `reportFile` | `string` | No | — | — |
+| `writeSummary` | `boolean` | No | — | — |
+| `emitAnnotations` | `boolean` | Yes | `false` | — |
+
+---

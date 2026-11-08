@@ -3,6 +3,9 @@
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-Vortex%20v1.1-7c3aed?logo=github&style=flat-square)](https://github.com/marketplace/actions/vortex-ast-predictive-ci-test-splitter)
 [![Deno 2](https://img.shields.io/badge/Deno-2.x-000000?logo=deno&style=flat-square)](https://deno.com)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0%20%28Supply--Chain%20Safe%29-10b981?style=flat-square)](#5-stage-architecture)
+[![API Contract: Specter](https://img.shields.io/badge/API%20Contract-Specter%20Guarded-9333ea?style=flat-square)](https://github.com/glastor-core/specter)
+[![DevSecOps: Nemesis](https://img.shields.io/badge/DevSecOps-Nemesis%20Audited-059669?style=flat-square)](https://github.com/glastor-core/nemesis)
+[![Docs: Zerho Engine](https://img.shields.io/badge/Docs-Zerho%20%2B%20llms.txt-8b5cf6?style=flat-square)](./docs/reference.md)
 [![Organization](https://img.shields.io/badge/GLASTOR%C2%AE%20Core-glastor.es-2563eb?style=flat-square)](https://glastor.es)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
 
@@ -88,13 +91,9 @@ jobs:
 
 ## 🧠 5-Stage Architecture (`v1.1.0`)
 
-```mermaid
-flowchart LR
-  D["1. Git Diff Hunks (--unified=0)"] --> A["2. Polyglot AST & Alias Analyzer"]
-  A --> G["3. Reverse DAG + Symbol Barrel Pruning"]
-  G --> S["4. LPT Bin-Packing + Fail-Fast Order"]
-  S --> O["5. Matrix + PR Annotations + Governance"]
-```
+<p align="center">
+  <img src="assets/architecture.svg" alt="GLASTOR® Vortex 5-Stage Predictive CI Architecture" width="100%" />
+</p>
 
 1. **Stage 1 — Surgical Diff Hunk Extraction ([diff-parser.ts](file:///c:/Users/ricsg/Desktop/vortex/src/git/diff-parser.ts))**: Extracts exact modified line intervals (`[startLine, endLine]`) and filters out non-functional changes (comments, docstrings, whitespace/indentation).
 2. **Stage 2 — Polyglot AST Symbol Fingerprinting & Monorepo Alias Resolution ([analyzer.ts](file:///c:/Users/ricsg/Desktop/vortex/src/ast/analyzer.ts))**: Maps modified line hunks onto AST declarations (`function`, `class`, `const`, `interface`, `type`, `enum`), expands intra-module callers (`expandIntraModuleMutatedSymbols`), and resolves `deno.json` `imports` and `tsconfig.json` `paths` aliases.
