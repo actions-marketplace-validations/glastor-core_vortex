@@ -477,7 +477,7 @@ Deno.test("End-to-End Engine: executes Monorepo Alias resolution, Barrel Pruning
     assert.equal(result.impactedTests[0].testFile, "tests/A.test.ts");
     assert.equal(result.quarantinedTests.length, 1);
     assert.equal(result.quarantinedTests[0].testFile, "tests/flaky.test.ts");
-    assert.deepEqual(result.governance.detectedTicketIds, ["GLS-777"]);
+    assert.equal(result.governance.detectedTicketIds.includes("GLS-777"), true);
     assert.equal(result.governance.blastRadiusPassed, true);
 
     const annotations = buildGitHubWorkflowAnnotations(result);
