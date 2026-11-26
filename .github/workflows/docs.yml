@@ -28,7 +28,7 @@ jobs:
       - name: Generate Zerho API Reference & llms.txt
         run: deno task docs
 
-      - name: Commit & Push Synchronized Documentation
+      - name: Sync Documentation Branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -36,6 +36,10 @@ jobs:
           if git diff --staged --quiet; then
             echo "Zerho documentation and llms.txt are already up to date."
           else
+            BRANCH="docs/zerho-sync"
+            git checkout -B "$BRANCH"
             git commit -m "docs(zerho): synchronize API reference and llms.txt [skip ci]"
-            git push origin main
+            git push --force origin "$BRANCH"
+            echo "### Zerho Docs Sync" >> "$GITHUB_STEP_SUMMARY"
+            echo "Updated \`$BRANCH\`. Open PR: https://github.com/${GITHUB_REPOSITORY}/compare/main...$BRANCH" >> "$GITHUB_STEP_SUMMARY"
           fi
