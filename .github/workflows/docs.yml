@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   zerho-docs-sync:
@@ -29,9 +28,7 @@ jobs:
       - name: Generate Zerho API Reference & llms.txt
         run: deno task docs
 
-      - name: Open or Update Documentation Sync PR
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Sync Documentation Branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -42,12 +39,7 @@ jobs:
             BRANCH="docs/zerho-sync"
             git checkout -B "$BRANCH"
             git commit -m "docs(zerho): synchronize API reference and llms.txt [skip ci]"
-            git push --force-with-lease origin "$BRANCH"
-            if ! gh pr view "$BRANCH" >/dev/null 2>&1; then
-              gh pr create \
-                --base main \
-                --head "$BRANCH" \
-                --title "docs(zerho): synchronize API reference and llms.txt" \
-                --body "Automated documentation and \`llms.txt\` synchronization triggered by Zerho Docs Sync."
-            fi
+            git push --force origin "$BRANCH"
+            echo "### Zerho Docs Sync" >> "$GITHUB_STEP_SUMMARY"
+            echo "Updated \`$BRANCH\`. Open PR: https://github.com/${GITHUB_REPOSITORY}/compare/main...$BRANCH" >> "$GITHUB_STEP_SUMMARY"
           fi
